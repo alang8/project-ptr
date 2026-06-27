@@ -3,36 +3,43 @@
 Live leaderboard + info site for **Project Caravan**, an independent, community-run
 competitive circuit for *The Bazaar*, played on the test realm.
 
-## What this is
+## Structure
 
-A single static page (`index.html`) — no build step, no framework. It has four
-tabs (Ladder, About, Format, Compete) and a live leaderboard that reads directly
-from a read-only Supabase view. The Discord bot writes the data; the site only reads.
+```
+index.html      page structure + content (4 tabs + Account)
+styles.css      all styling
+app.js          tabs, leaderboard, Discord login, name-linking
+assets/         logos + favicon (gem)
+for-your-friend/  Supabase SQL + bot command spec (NOT part of the website)
+```
 
-## Run locally
+Plain static site — no build step. Deploy the folder as-is (Cloudflare Pages,
+Netlify, Vercel, or GitHub Pages); `index.html` is the entry point, no build command.
 
-Just open `index.html` in a browser. That's it.
+## Configuration (top of `app.js`)
 
-## Configuration
+- `DISCORD_URL` — invite link for the "Join Discord" buttons.
+- `SUPABASE_URL` / `SUPABASE_KEY` — project URL + **publishable/anon** key (read-only,
+  safe in the browser). Never put the `service_role` key here.
 
-Both settings live at the top of the `<script>` block near the bottom of `index.html`:
+## Discord login + name linking
 
-- `DISCORD_URL` — the invite link used by the three "Join Discord" buttons.
-- `SUPABASE_URL` / `SUPABASE_KEY` — the Supabase project URL and the **publishable /
-  anon** key. This key is read-only (RLS is on) and is safe to ship in the browser.
-  **Never** put the `service_role` / secret key here.
+Lets a player sign in with Discord and connect their in-game name so results are
+tracked. Requires one-time setup on the Supabase side (see `for-your-friend/`):
 
-## Hosting
+1. **Discord app:** create one at discord.com/developers → OAuth2 → add redirect
+   `https://rbvezddypfpjepofngqb.supabase.co/auth/v1/callback` → copy Client ID + Secret.
+2. **Supabase:** Authentication → Providers → enable Discord, paste ID + Secret.
+3. **Supabase:** Authentication → URL Configuration → add Redirect URLs for
+   `http://localhost:8000` (dev) and your production URL.
+4. **Database:** run `for-your-friend/supabase_setup.sql`.
+5. **Bot:** add the `/link` command per `for-your-friend/bot_link_command.md`.
 
-Deploy straight from this repo to any static host (Cloudflare Pages, Vercel,
-Netlify, GitHub Pages). No build command; the output directory is the repo root,
-and `index.html` is the entry point.
-
-To keep the live site private during testing, Cloudflare Pages + Cloudflare Access
-(free for up to 50 users, email one-time-PIN) is the easiest gated setup.
+The full login flow needs a real redirect URL, so test against a local server
+(`python3 -m http.server 8000`) or the hosted site — not a `file://` page. The
+read-only leaderboard works without any of this.
 
 ## Note
 
-Project Caravan is an independent, community event and is not affiliated with or
-endorsed by Tempo or The Bazaar. The Bazaar name and logos are property of their
-respective owners, used with permission.
+Independent community event; not affiliated with or endorsed by Tempo or The Bazaar.
+The Bazaar name and logos are property of their respective owners, used with permission.
