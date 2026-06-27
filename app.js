@@ -1,5 +1,5 @@
 /* =========================================================================
-   Project Caravan — front-end logic
+   Project PTR — front-end logic
    Config: edit DISCORD_URL when you have an invite. SUPABASE_KEY is the
    read-only publishable key (safe in the browser). Never put a secret key here.
    ========================================================================= */
@@ -130,7 +130,7 @@ async function renderAccount(session){
 
 function renderPending(head, req){
   panel.innerHTML = head + `
-    <p class="acct-hint" style="margin-bottom:2px">To finish linking <b style="color:var(--ink)">${esc(req.requested_name)}</b>, run this in the Project Caravan Discord:</p>
+    <p class="acct-hint" style="margin-bottom:2px">To finish linking <b style="color:var(--ink)">${esc(req.requested_name)}</b>, run this in the Project PTR Discord:</p>
     <div class="codebox">
       <div class="lbl">Your one-time code</div>
       <div class="code">${esc(req.code)}</div>

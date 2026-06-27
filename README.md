@@ -1,6 +1,6 @@
-# Project Caravan
+# Project PTR
 
-Live leaderboard + info site for **Project Caravan**, an independent, community-run
+Live leaderboard + info site for **Project PTR**, an independent, community-run
 competitive circuit for *The Bazaar*, played on the test realm.
 
 ## Structure
