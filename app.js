@@ -1,5 +1,5 @@
 /* =========================================================================
-   Project PTR — front-end logic
+   Project PTR front-end logic
    Config: edit DISCORD_URL when you have an invite. SUPABASE_KEY is the
    read-only publishable key (safe in the browser). Never put a secret key here.
    ========================================================================= */
@@ -73,7 +73,7 @@ tickBoard(); setInterval(tickBoard, 30000);
 /* =========================================================================
    AUTH + NAME LINKING
    ========================================================================= */
-const DISCORD_SVG = '<svg viewBox="0 0 24 24"><path d="M20.3 4.4A19.8 19.8 0 0 0 15.4 3l-.2.5c1.6.4 2.9 1 4.2 1.8a13.3 13.3 0 0 0-11-.1c1.2-.8 2.6-1.4 4.1-1.7L12.3 3a19.8 19.8 0 0 0-4.9 1.4C4 9 3.3 13.4 3.6 17.8a20 20 0 0 0 6 .9l.5-1c-1-.3-1.8-.7-2.6-1.2l.6-.4a13.6 13.6 0 0 0 11.6 0l.6.4c-.8.5-1.7.9-2.6 1.2l.5 1a20 20 0 0 0 6-1c.4-5-.8-9.3-3.6-13.3zM9.5 14.7c-1 0-1.7-.9-1.7-2s.8-2 1.7-2 1.7.9 1.7 2-.8 2-1.7 2zm5 0c-1 0-1.7-.9-1.7-2s.8-2 1.7-2 1.7.9 1.7 2-.8 2-1.7 2z"/></svg>';
+const DISCORD_MARK = '<img class="dico" src="assets/discord.png" alt="">';
 const slot  = $("auth-slot");
 const panel = $("account-panel");
 let pollTimer = null;
@@ -89,7 +89,7 @@ async function signOut(){ stopPolling(); await sb.auth.signOut(); }
 
 function renderSlot(session){
   if(!slot) return;
-  if(!session){ slot.innerHTML = `<button class="btn-discord" id="nav-signin">${DISCORD_SVG} Sign in</button>`; $("nav-signin").onclick=signIn; return; }
+  if(!session){ slot.innerHTML = `<button class="btn-discord" id="nav-signin">${DISCORD_MARK} Sign in</button>`; $("nav-signin").onclick=signIn; return; }
   const u=session.user, av=discordAvatar(u);
   slot.innerHTML = `<div class="user-chip">${av?`<img src="${esc(av)}" alt="">`:""}<span class="un">${esc(discordName(u))}</span><button id="nav-signout">Sign out</button></div>`;
   $("nav-signout").onclick=signOut;
@@ -99,7 +99,7 @@ async function renderAccount(session){
   if(!panel) return;
   if(!session){
     panel.innerHTML = `<p class="acct-muted" style="margin-bottom:18px">Sign in with Discord to get started.</p>
-      <button class="btn-discord" id="acct-signin" style="margin:0 auto">${DISCORD_SVG} Sign in with Discord</button>`;
+      <button class="btn-discord" id="acct-signin" style="margin:0 auto">${DISCORD_MARK} Sign in with Discord</button>`;
     $("acct-signin").onclick=signIn; return;
   }
   const u=session.user, av=discordAvatar(u);
@@ -136,7 +136,7 @@ function renderPending(head, req){
       <div class="code">${esc(req.code)}</div>
       <div class="cmd"><b>/link</b> ${esc(req.code)}</div>
     </div>
-    <div class="acct-status"><span class="spinner"></span> Waiting for confirmation in Discord…</div>
+    <div class="acct-status"><span class="spinner"></span> Waiting for confirmation in Discord...</div>
     <button class="btn btn-ghost" id="cancel-link" style="margin-top:16px">Cancel</button>`;
   $("cancel-link").onclick = async () => { stopPolling(); await sb.from("link_requests").delete().eq("id", req.id); refreshAuth(); };
 }

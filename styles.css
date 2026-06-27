@@ -226,3 +226,5 @@ footer .gold{color:var(--gold-deep)}
 @keyframes spin{to{transform:rotate(360deg)}}
 .acct-err{color:var(--loss);font-size:13px;margin-top:10px}
 .acct-ok{color:var(--win)}
+
+.btn-discord .dico{width:18px;height:18px;display:block}

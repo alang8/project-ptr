@@ -13,13 +13,13 @@ assets/         logos + favicon (gem)
 for-your-friend/  Supabase SQL + bot command spec (NOT part of the website)
 ```
 
-Plain static site — no build step. Deploy the folder as-is (Cloudflare Pages,
+Plain static site, no build step. Deploy the folder as-is (Cloudflare Pages,
 Netlify, Vercel, or GitHub Pages); `index.html` is the entry point, no build command.
 
 ## Configuration (top of `app.js`)
 
-- `DISCORD_URL` — invite link for the "Join Discord" buttons.
-- `SUPABASE_URL` / `SUPABASE_KEY` — project URL + **publishable/anon** key (read-only,
+- `DISCORD_URL`: invite link for the "Join Discord" buttons.
+- `SUPABASE_URL` / `SUPABASE_KEY`: project URL + **publishable/anon** key (read-only,
   safe in the browser). Never put the `service_role` key here.
 
 ## Discord login + name linking
@@ -36,7 +36,7 @@ tracked. Requires one-time setup on the Supabase side (see `for-your-friend/`):
 5. **Bot:** add the `/link` command per `for-your-friend/bot_link_command.md`.
 
 The full login flow needs a real redirect URL, so test against a local server
-(`python3 -m http.server 8000`) or the hosted site — not a `file://` page. The
+(`python3 -m http.server 8000`) or the hosted site, not a `file://` page. The
 read-only leaderboard works without any of this.
 
 ## Note
