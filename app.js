@@ -109,6 +109,7 @@ function accountName(user){ const m=user.user_metadata||{}; return m.full_name||
 function accountAvatar(user){ const m=user.user_metadata||{}; return m.avatar_url||m.picture||""; }
 
 async function signIn(){
+  sessionStorage.setItem("ptr_login","1");
   await sb.auth.signInWithOAuth({ provider:"discord", options:{ redirectTo: location.origin } });
 }
 async function signOut(){ await sb.auth.signOut(); }
@@ -181,12 +182,12 @@ async function submitClaim(){
 }
 
 async function refreshAuth(){ const { data:{ session } } = await sb.auth.getSession(); renderSlot(session); renderAccount(session); }
-let wasSignedIn = false;
 sb.auth.onAuthStateChange((event, session) => {
-  const isNow = !!session;
   renderSlot(session); renderAccount(session);
-  if(event==="SIGNED_IN" && !wasSignedIn && location.hash.slice(1)!=="account") show("account");
-  wasSignedIn = isNow;
+  if(event==="SIGNED_IN" && sessionStorage.getItem("ptr_login")){
+    sessionStorage.removeItem("ptr_login");
+    show("account");
+  }
 });
 refreshAuth();
 
@@ -201,7 +202,7 @@ function fmtDate(iso){ if(!iso) return ""; return new Date(iso).toLocaleDateStri
 async function loadHistory(playerId){
   try{
     const { data, error } = await sb.from("lobby_final_results")
-      .select("finish_order, placement, delta, rating_after, is_win, hero, games!inner(id, ended_at, rated, ranked, code, status)")
+      .select("finish_order, placement, delta, rating_after, is_win, hero, games!inner(id, ended_at, rated, ranked, code, origin, status)")
       .eq("player_id", playerId).eq("games.status","closed").eq("games.ranked", true)
       .order("ended_at", { foreignTable:"games", ascending:false }).limit(30);
     if(error) throw error;
@@ -212,7 +213,7 @@ async function loadHistory(playerId){
       .eq("player_id", playerId).limit(60);
     const ids = [...new Set((rows||[]).map(r => r.lobby_id))];
     let gs = [];
-    if(ids.length){ const { data } = await sb.from("games").select("id, ended_at, rated, ranked, code, status").in("id", ids); gs = data || []; }
+    if(ids.length){ const { data } = await sb.from("games").select("id, ended_at, rated, ranked, code, origin, status").in("id", ids); gs = data || []; }
     const gmap = Object.fromEntries(gs.map(g => [g.id, g]));
     return (rows||[]).map(r => ({ ...r, games: gmap[r.lobby_id] }))
       .filter(r => r.games && r.games.status === "closed" && r.games.ranked === true)
@@ -274,16 +275,21 @@ async function renderProfile(){
   const p = d.player, games = p.games || 0, wr = games ? Math.round((p.wins/games)*100) : 0;
 
   const matches = d.history.slice(0,15).map(h => {
+    const g = h.games || {};
     const dl = Math.round(h.delta || 0);
     const cls = dl>0 ? "pos" : (dl<0 ? "neg" : "zero");
     const deltaTxt = dl>0 ? ("+"+dl) : (""+dl);
-    const unrated = (h.games && h.games.rated === false) ? `<span class="unrated">unrated</span>` : "";
+    const origin = g.origin || (g.ranked ? "matchmaking" : g.code ? "imported" : "custom");
+    const badge = origin==="matchmaking" ? '<span class="m-badge ranked">Ranked</span>'
+                : origin==="imported" ? '<span class="m-badge imported">Imported</span>'
+                : '<span class="m-badge custom">Custom</span>';
+    const codeLabel = g.code ? `<span class="m-code">${esc(g.code)}</span>` : "";
     return `<div class="m-row">
-      <span class="m-date">${fmtDate(h.games && h.games.ended_at)}</span>
+      <span class="m-date">${fmtDate(g.ended_at)}</span>
       <span class="m-place">${ORD(h.placement)}</span>
       <span class="m-hero">${h.hero ? esc(h.hero) : "-"}</span>
-      <span class="m-delta ${cls}">${deltaTxt}</span>
-      <span class="m-rating">${Math.round(h.rating_after)}${unrated}</span>
+      <span class="m-delta ${cls}">${g.rated!==false ? deltaTxt : ""}</span>
+      <span class="m-rating">${Math.round(h.rating_after)}${badge}${codeLabel}</span>
     </div>`;
   }).join("");
 
