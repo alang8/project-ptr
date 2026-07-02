@@ -26,7 +26,7 @@ function show(name){
   window.scrollTo({top:0, behavior:"auto"});
   if(name==="profile") renderProfile();
 }
-document.querySelectorAll("[data-tab]").forEach(b => b.addEventListener("click", () => show(b.dataset.tab)));
+document.querySelectorAll("[data-tab]").forEach(b => b.addEventListener("click", () => b.dataset.tab==="profile" ? showProfile(null) : show(b.dataset.tab)));
 window.addEventListener("hashchange", () => { const h=location.hash.slice(1); if($(h)) show(h); });
 if(location.hash.slice(1) && $(location.hash.slice(1))) show(location.hash.slice(1));
 
