@@ -181,11 +181,12 @@ async function submitClaim(){
 }
 
 async function refreshAuth(){ const { data:{ session } } = await sb.auth.getSession(); renderSlot(session); renderAccount(session); }
-let authReady = false;
+let wasSignedIn = false;
 sb.auth.onAuthStateChange((event, session) => {
+  const isNow = !!session;
   renderSlot(session); renderAccount(session);
-  if(authReady && event==="SIGNED_IN" && location.hash.slice(1)!=="account") show("account");
-  authReady = true;
+  if(event==="SIGNED_IN" && !wasSignedIn && location.hash.slice(1)!=="account") show("account");
+  wasSignedIn = isNow;
 });
 refreshAuth();
 
