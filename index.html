@@ -113,22 +113,48 @@
   <!-- ================= COMPETE ================= -->
   <section class="tab" id="compete">
     <div class="sec-head">
-      <div class="kicker">Join the Field</div>
-      <h2>Compete</h2>
-      <p class="lede">Registration runs through Discord. Here's how to get in.</p>
+      <div class="kicker">Get Started</div>
+      <h2>How to Play</h2>
+      <p class="lede">All results come straight from the Bazaar. There is no manual self-reporting.</p>
     </div>
-    <div class="prose">
-      <p><strong>Who can play:</strong> Project PTR is open to anyone who wants to help test. You just need access to The Bazaar's test realm. See below for more information. </p>
+
+    <div class="mmrbox">
+      <h3>Before Your First Game</h3>
+      <p>You need two things: <strong>test realm access</strong> and your <strong>in-game name linked</strong>.</p>
+      <p>For the test realm, right-click The Bazaar in your Steam library, go to Properties, then Game Versions and Betas, and enter this code: <code>17IR8wb70MJOxCCh</code>. You will need to register a new account when you first load in. (Steam only for now.)</p>
+      <p>For your name, either use <code>/add-account</code> in Discord or claim it on this site under the Account tab. The bot needs your exact in-game Bazaar username to match results back to you. If you skip this step, you'll be prompted the first time you try to host, join, or queue.</p>
     </div>
-    <div class="steps">
-      <div class="step"><p><strong>Get test realm access</strong> so you can log into The Bazaar's test server. Right now, only Steam users can do this. Right click the game in your Steam library, click "Properties", go to "Game Versions and Betas", and enter this code: 17IR8wb70MJOxCCh. Once you load into the game, you will need to register a new account.</p></div>
-      <div class="step"><p><strong>Join the Discord</strong> and read the announcement for the current competition period's dates and eligibility.</p></div>
-      <div class="step"><p><strong>Register</strong> by claiming your name from this site or through the Discord bot directly. Make sure that enter your name exactly the same as your in-game one!</p></div>
-      <div class="step"><p><strong>Queue up</strong> with the bot during the ladder window and climb the live board on this site.</p></div>
+
+    <div class="mmrbox" style="margin-top:16px">
+      <h3>Option 1: Custom Lobby (Unranked)</h3>
+      <div class="steps" style="margin-top:4px">
+        <div class="step"><p><strong>Host.</strong> Run <code>/host</code> to create a lobby. The bot posts a lobby message with Join, Invite, and Start buttons. There's no join code for players, they're invited by in-game name.</p></div>
+        <div class="step"><p><strong>Fill.</strong> Players click <strong>Join lobby</strong> on the message to get on the roster. Use <code>/my-lobbies</code> or <code>/lobby</code> to check details anytime.</p></div>
+        <div class="step"><p><strong>Invite and start.</strong> The host clicks <strong>Invite to Bazaar</strong> to send in-game invites to the roster, then <strong>Start lobby</strong> once everyone's present in the Bazaar.</p></div>
+        <div class="step"><p><strong>Finish and record.</strong> After the tournament, the host runs <code>/import-results</code>. The bot pulls the final standings directly from the Bazaar, matched by each player's in-game name. Press <strong>Confirm &amp; finalize</strong> and it's recorded. Works for players who haven't linked Discord too; their results attach automatically once they <code>/add-account</code> that name later.</p></div>
+      </div>
+      <p style="font-size:13px;color:var(--ink-faint);margin-top:8px">Custom lobbies are always <strong style="color:var(--ink-soft)">unrated</strong>. They show in match history and hero stats but never move your rating. Cancel anytime with <code>/cancel-lobby</code>.</p>
     </div>
+
+    <div class="mmrbox" style="margin-top:16px">
+      <h3>Option 2: Matchmaking (Ranked)</h3>
+      <div class="steps" style="margin-top:4px">
+        <div class="step"><p><strong>Queue.</strong> Run <code>/queue</code> from any channel. Check the queue with <code>/queue-status</code>, or drop out with <code>/leave-queue</code>.</p></div>
+        <div class="step"><p><strong>Get matched.</strong> The bot checks every ~30 seconds and groups 8 players by rating. When a match forms, it creates the Bazaar tournament and invites everyone automatically. An announcement posts in each channel the matched players queued from.</p></div>
+        <div class="step"><p><strong>Play.</strong> Open the Bazaar and join the tournament. The lobby auto-starts once everyone's present (or after a few minutes if at least half are in). No buttons to press.</p></div>
+        <div class="step"><p><strong>Done.</strong> Results are pulled and ratings applied automatically when the game ends. No <code>/import-results</code> needed (though the host can run it to finalize early).</p></div>
+      </div>
+      <p style="font-size:13px;color:var(--ink-faint);margin-top:8px"><strong style="color:var(--ink-soft)">Matchmaking is the only ranked mode.</strong> Rating changes happen exclusively through <code>/queue</code>. Queue tickets expire after 30 minutes if no match forms.</p>
+    </div>
+
+    <div class="mmrbox" style="margin-top:16px">
+      <h3>Other Useful Commands</h3>
+      <p><code>/import-code</code> records a Bazaar tournament the bot never hosted, using just its join code. Always unrated, but it feeds hero stats and match history for all participants.</p>
+      <p><code>/tournament-results</code> gives a read-only view of any tournament's standings pulled live from the Bazaar servers.</p>
+      <p><code>/rating</code>, <code>/leaderboard</code>, <code>/hero-stats</code>, and <code>/history</code> let you check standings and stats from Discord.</p>
+    </div>
+
     <div class="prose" style="margin-top:28px">
-      <p><strong>Want to run your own lobby?</strong> Use <code>/host</code> (for unranked) or <code>/queue</code> (for ranked) to create a custom game. Others join from the lobby message, and you pull the results with <code>/import-results</code> when it's done. Custom games are recorded but always unrated.</p>
-      <p><strong>Played a tournament outside the bot?</strong> Anyone can run <code>/import-code</code> with the tournament's join code to record its standings. Results are pulled straight from the Bazaar, hero data and stats update for all participants, and the game appears in match history. Imported games are always unrated.</p>
       <p><strong>The bot works from any Discord server.</strong> You don't need to be in the Bazaar Discord server to play. <a href="https://discord.com/oauth2/authorize?client_id=1510794915812999319&permissions=19456&integration_type=0&scope=bot+applications.commands" target="_blank" rel="noopener" style="color:var(--gold-bright)">Invite the bot to your own server</a> and use all the same commands. Your rating and match history carry across servers.</p>
     </div>
   </section>
