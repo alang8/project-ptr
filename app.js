@@ -5,8 +5,8 @@
    ========================================================================= */
 const SUPABASE_URL = "https://rbvezddypfpjepofngqb.supabase.co";
 const SUPABASE_KEY = "sb_publishable_Tk-w3eZYTevhw8-5jxBOwg_MPaH4778";
-const DISCORD_URL  = "#";          // <-- paste your Discord invite link
-const TOP_N        = 100;          // ranks to display
+const DISCORD_URL  = "https://discord.gg/FCMSzHSAp7";
+const TOP_N        = 1000;          // ranks to display
 
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 const $  = id => document.getElementById(id);
