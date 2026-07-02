@@ -5,8 +5,8 @@
    ========================================================================= */
 const SUPABASE_URL = "https://rbvezddypfpjepofngqb.supabase.co";
 const SUPABASE_KEY = "sb_publishable_Tk-w3eZYTevhw8-5jxBOwg_MPaH4778";
-const DISCORD_URL  = "https://discord.gg/FCMSzHSAp7";
-const TOP_N        = 1000;          // ranks to display
+const DISCORD_URL  = "#";          // <-- paste your Discord invite link
+const PAGE_SIZE    = 50;           // rows per ladder page
 
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 const $  = id => document.getElementById(id);
@@ -25,6 +25,7 @@ function show(name){
   if(location.hash.slice(1)!==name) history.replaceState(null,"","#"+name);
   window.scrollTo({top:0, behavior:"auto"});
   if(name==="profile") renderProfile();
+  if(name==="heroes") renderHeroes();
 }
 document.querySelectorAll("[data-tab]").forEach(b => b.addEventListener("click", () => b.dataset.tab==="profile" ? showProfile(null) : show(b.dataset.tab)));
 window.addEventListener("hashchange", () => { const h=location.hash.slice(1); if($(h)) show(h); });
@@ -35,12 +36,14 @@ if(location.hash.slice(1) && $(location.hash.slice(1))) show(location.hash.slice
    ========================================================================= */
 const MEDALS = {1:"🥇",2:"🥈",3:"🥉"};
 let prevRatings = {};
-async function fetchLeaderboard(){
+let currentPage = 0;
+async function fetchLeaderboard(page){
+  const from = page*PAGE_SIZE, to = from+PAGE_SIZE-1;
   const { data, error, count } = await sb
     .from("leaderboard")
     .select("id,discord_id,username,rating,games,wins,losses,position", { count:"exact" })
     .order("position", { ascending:true })
-    .range(0, TOP_N-1);
+    .range(from, to);
   if(error) throw error;
   return {
     total: count ?? data.length,
@@ -67,194 +70,205 @@ function renderBoard(payload){
     </div>`;
   }).join("");
   prevRatings = {}; list.forEach(p => prevRatings[p.key]=p.rating);
+  renderPager(payload.total||0);
 }
-async function tickBoard(){ try{ renderBoard(await fetchLeaderboard()); }catch(e){ console.error(e); $("err").style.display="block"; } }
+async function tickBoard(){
+  try{
+    const payload = await fetchLeaderboard(currentPage);
+    const maxPage = Math.max(0, Math.ceil((payload.total||0)/PAGE_SIZE)-1);
+    if(currentPage > maxPage){ currentPage = maxPage; return tickBoard(); }
+    renderBoard(payload);
+  }catch(e){ console.error(e); $("err").style.display="block"; }
+}
+function goToPage(p){ currentPage = Math.max(0, p); tickBoard(); window.scrollTo({top:0, behavior:"smooth"}); }
+function renderPager(total){
+  const pager = $("pager"); if(!pager) return;
+  const pages = Math.max(1, Math.ceil(total/PAGE_SIZE));
+  if(pages<=1){ pager.innerHTML=""; return; }
+  const from = total ? currentPage*PAGE_SIZE+1 : 0;
+  const to = Math.min(total, (currentPage+1)*PAGE_SIZE);
+  pager.innerHTML = `
+    <button class="pg-btn" id="pg-prev" ${currentPage<=0?'disabled':''}>Prev</button>
+    <span class="pg-info">${from}-${to} of ${total}</span>
+    <button class="pg-btn" id="pg-next" ${currentPage>=pages-1?'disabled':''}>Next</button>`;
+  const prev=$("pg-prev"), next=$("pg-next");
+  if(prev) prev.onclick = () => goToPage(currentPage-1);
+  if(next) next.onclick = () => goToPage(currentPage+1);
+}
 tickBoard(); setInterval(tickBoard, 30000);
 $("rows").addEventListener("click", e => { const r=e.target.closest(".row[data-name]"); if(r) showProfile(r.dataset.name); });
 
 /* =========================================================================
-   AUTH + NAME LINKING
+   AUTH + NAME LINKING  (Supabase Auth + app_set_my_username / app_my_player)
    ========================================================================= */
 const DISCORD_MARK = '<img class="dico" src="assets/discord.png" alt="">';
 const slot  = $("auth-slot");
 const panel = $("account-panel");
-let pollTimer = null;
 
-function genCode(){ const a="ABCDEFGHJKMNPQRSTUVWXYZ23456789"; return Array.from({length:6},()=>a[Math.floor(Math.random()*a.length)]).join(""); }
-function discordName(user){ const m=user.user_metadata||{}; return m.full_name||m.name||m.global_name||m.preferred_username||m.user_name||"Discord user"; }
-function discordAvatar(user){ const m=user.user_metadata||{}; return m.avatar_url||m.picture||""; }
+function accountName(user){ const m=user.user_metadata||{}; return m.full_name||m.name||m.global_name||m.preferred_username||m.user_name||"Signed in"; }
+function accountAvatar(user){ const m=user.user_metadata||{}; return m.avatar_url||m.picture||""; }
 
 async function signIn(){
   await sb.auth.signInWithOAuth({ provider:"discord", options:{ redirectTo: location.origin } });
 }
-async function signOut(){ stopPolling(); await sb.auth.signOut(); }
+async function signOut(){ await sb.auth.signOut(); }
 
 function renderSlot(session){
   if(!slot) return;
   if(!session){ slot.innerHTML = `<button class="btn-discord" id="nav-signin">${DISCORD_MARK} Sign in</button>`; $("nav-signin").onclick=signIn; return; }
-  const u=session.user, av=discordAvatar(u);
-  slot.innerHTML = `<div class="user-chip">${av?`<img src="${esc(av)}" alt="">`:""}<span class="un">${esc(discordName(u))}</span><button id="nav-signout">Sign out</button></div>`;
+  const u=session.user, av=accountAvatar(u);
+  slot.innerHTML = `<div class="user-chip">${av?`<img src="${esc(av)}" alt="">`:""}<span class="un">${esc(accountName(u))}</span><button id="nav-signout">Sign out</button></div>`;
   $("nav-signout").onclick=signOut;
+}
+
+async function myPlayer(){
+  try{ const { data } = await sb.rpc("app_my_player"); return data || null; }catch(e){ return null; }
 }
 
 async function renderAccount(session){
   if(!panel) return;
   if(!session){
-    panel.innerHTML = `<p class="acct-muted" style="margin-bottom:18px">Sign in with Discord to get started.</p>
+    panel.innerHTML = `<p class="acct-muted" style="margin-bottom:18px">Sign in to claim your in-game name.</p>
       <button class="btn-discord" id="acct-signin" style="margin:0 auto">${DISCORD_MARK} Sign in with Discord</button>`;
     $("acct-signin").onclick=signIn; return;
   }
-  const u=session.user, av=discordAvatar(u);
-  const head = `<div class="acct-row">${av?`<img src="${esc(av)}" alt="">`:""}<div class="who"><b>${esc(discordName(u))}</b><span>Signed in with Discord</span></div></div>`;
+  const u=session.user, av=accountAvatar(u);
+  const head = `<div class="acct-row">${av?`<img src="${esc(av)}" alt="">`:""}<div class="who"><b>${esc(accountName(u))}</b><span>Signed in</span></div></div>`;
 
-  // already linked?
-  let linked=null;
-  try{ const { data } = await sb.rpc("get_my_link"); linked = data || null; }catch(e){ /* rpc may not exist yet */ }
-  if(linked){
-    panel.innerHTML = head + `<div class="acct-linked">✅ Connected to <span class="nm">${esc(linked)}</span></div>
+  const me = await myPlayer();
+  if(me && me.username){
+    panel.innerHTML = head + `<div class="acct-linked">\u2705 Connected to <span class="nm">${esc(me.username)}</span></div>
       <p class="acct-hint">Your results are tracked on the ladder under this name.</p>
       <button class="btn btn-gold" id="view-profile" style="margin-top:14px">View your profile</button>`;
     $("view-profile").onclick = () => showProfile(null);
     return;
   }
 
-  // pending request?
-  const { data:reqs } = await sb.from("link_requests").select("*").order("created_at",{ascending:false}).limit(1);
-  const pending = reqs && reqs[0] && reqs[0].status==="pending" ? reqs[0] : null;
-  if(pending){ renderPending(head, pending); startPolling(pending.id); return; }
-
-  // claim form
   panel.innerHTML = head + `
     <div class="field"><input id="ign" type="text" placeholder="Your in-game name" maxlength="40" autocomplete="off"></div>
-    <p class="acct-hint">Enter the exact name you use in The Bazaar, then confirm it in Discord.</p>
+    <p class="acct-hint">Enter the exact name you use in The Bazaar to claim it.</p>
     <div class="acct-err" id="acct-err" style="display:none"></div>
-    <button class="btn btn-gold" id="gen-code" style="margin-top:16px">Get my link code</button>`;
-  $("gen-code").onclick = submitClaim;
-}
-
-function renderPending(head, req){
-  panel.innerHTML = head + `
-    <p class="acct-hint" style="margin-bottom:2px">To finish linking <b style="color:var(--ink)">${esc(req.requested_name)}</b>, run this in the Project PTR Discord:</p>
-    <div class="codebox">
-      <div class="lbl">Your one-time code</div>
-      <div class="code">${esc(req.code)}</div>
-      <div class="cmd"><b>/link</b> ${esc(req.code)}</div>
-    </div>
-    <div class="acct-status"><span class="spinner"></span> Waiting for confirmation in Discord...</div>
-    <button class="btn btn-ghost" id="cancel-link" style="margin-top:16px">Cancel</button>`;
-  $("cancel-link").onclick = async () => { stopPolling(); await sb.from("link_requests").delete().eq("id", req.id); refreshAuth(); };
+    <button class="btn btn-gold" id="claim-btn" style="margin-top:16px">Claim my name</button>`;
+  $("ign").addEventListener("keydown", e => { if(e.key==="Enter") submitClaim(); });
+  $("claim-btn").onclick = submitClaim;
 }
 
 async function submitClaim(){
   const name = ($("ign").value||"").trim();
-  const errEl = $("acct-err");
+  const errEl = $("acct-err"); errEl.style.display="none";
+  const btn = $("claim-btn");
   if(name.length<2){ errEl.textContent="Please enter your in-game name."; errEl.style.display="block"; return; }
-  const { data:{ user } } = await sb.auth.getUser();
-  await sb.from("link_requests").delete().eq("user_id", user.id).eq("status","pending");
-  const code = genCode();
-  const { error } = await sb.from("link_requests").insert({ user_id:user.id, requested_name:name, code, status:"pending" });
-  if(error){ errEl.textContent="Couldn't start the request: "+error.message; errEl.style.display="block"; return; }
-  refreshAuth();
-}
+  btn.disabled=true; btn.textContent="Claiming...";
+  let res=null;
+  try{ const { data, error } = await sb.rpc("app_set_my_username",{ p_name:name }); if(error) throw error; res=data; }
+  catch(e){ errEl.textContent="Something went wrong. Please try again."; errEl.style.display="block"; btn.disabled=false; btn.textContent="Claim my name"; return; }
 
-function startPolling(reqId){
-  stopPolling();
-  pollTimer = setInterval(async () => {
-    const { data } = await sb.from("link_requests").select("status,requested_name").eq("id", reqId).maybeSingle();
-    if(!data) return;
-    if(data.status==="linked"){ stopPolling(); refreshAuth(); }
-    else if(data.status==="rejected" || data.status==="needs_review"){ stopPolling(); showRejected(data.requested_name, data.status); }
-  }, 4000);
-}
-function stopPolling(){ if(pollTimer){ clearInterval(pollTimer); pollTimer=null; } }
-function showRejected(name, status){
-  const s = panel.querySelector(".acct-status");
-  const msg = status==="needs_review"
-    ? "This claim needs an organizer to review it. Hang tight or reach out in Discord."
-    : "That name couldn't be verified for your account. Double-check the name or ask an organizer.";
-  if(s) s.innerHTML = `<span class="acct-err">${msg}</span>`;
+  const status = res && res.status;
+  if(status==="ok"){ refreshAuth(); return; }
+  if(status==="pending"){
+    panel.innerHTML = `<div class="acct-linked" style="color:var(--gold-bright)">Claim recorded</div>
+      <p class="acct-hint">We'll connect <b style="color:var(--ink)">${esc(name)}</b> to your account once it's verified in a game. Its existing results stay on the ladder under that name until then.</p>
+      <button class="btn btn-ghost" id="claim-again" style="margin-top:16px">Claim a different name</button>`;
+    $("claim-again").onclick = () => refreshAuth();
+    return;
+  }
+  const msg = status==="conflict" ? "That name is already linked to another account. Try a different name, or reach out to an organizer."
+            : status==="invalid" ? "Please enter a valid in-game name."
+            : status==="unauthenticated" ? "Your session expired. Please sign in again."
+            : "Couldn't claim that name. Please try again.";
+  errEl.textContent=msg; errEl.style.display="block";
+  btn.disabled=false; btn.textContent="Claim my name";
 }
 
 async function refreshAuth(){ const { data:{ session } } = await sb.auth.getSession(); renderSlot(session); renderAccount(session); }
-
 sb.auth.onAuthStateChange((event, session) => {
   renderSlot(session); renderAccount(session);
   if(event==="SIGNED_IN" && location.hash.slice(1)!=="account") show("account");
 });
 refreshAuth();
 
-
 /* =========================================================================
-   PROFILE / STATS  (reads players + lobby_final_results + games, read-only)
+   PROFILE / STATS
    ========================================================================= */
 let profileTarget = null;
 function showProfile(name){ profileTarget = name || null; show("profile"); }
 const ORD = n => { const s=["th","st","nd","rd"], v=n%100; return n+(s[(v-20)%10]||s[v]||s[0]); };
 function fmtDate(iso){ if(!iso) return ""; return new Date(iso).toLocaleDateString([], {month:"short", day:"numeric"}); }
 
-async function loadProfileData(name){
-  const { data: player } = await sb.from("players")
-    .select("id, discord_id, username, rating, games, wins, losses")
-    .eq("username", name).maybeSingle();
-  if(!player) return null;
-
-  let position = null;
-  try { const { data:lb } = await sb.from("leaderboard").select("position").eq("username", name).maybeSingle(); position = lb ? lb.position : null; } catch(e){}
-
-  let history = [];
-  try {
+async function loadHistory(playerId){
+  try{
     const { data, error } = await sb.from("lobby_final_results")
-      .select("finish_order, placement, delta, rating_after, is_win, hero, games!inner(id, ended_at, rated, code, status)")
-      .eq("player_id", player.id).eq("games.status","closed")
+      .select("finish_order, placement, delta, rating_after, is_win, hero, games!inner(id, ended_at, rated, ranked, code, status)")
+      .eq("player_id", playerId).eq("games.status","closed").eq("games.ranked", true)
       .order("ended_at", { foreignTable:"games", ascending:false }).limit(30);
     if(error) throw error;
-    history = data || [];
-  } catch(e) {
-    // fallback: two queries + client stitch (per handoff note)
+    return data || [];
+  }catch(e){
     const { data: rows } = await sb.from("lobby_final_results")
       .select("finish_order, placement, delta, rating_after, is_win, hero, lobby_id")
-      .eq("player_id", player.id).limit(60);
+      .eq("player_id", playerId).limit(60);
     const ids = [...new Set((rows||[]).map(r => r.lobby_id))];
     let gs = [];
-    if(ids.length){ const { data } = await sb.from("games").select("id, ended_at, rated, code, status").in("id", ids); gs = data || []; }
+    if(ids.length){ const { data } = await sb.from("games").select("id, ended_at, rated, ranked, code, status").in("id", ids); gs = data || []; }
     const gmap = Object.fromEntries(gs.map(g => [g.id, g]));
-    history = (rows||[]).map(r => ({ ...r, games: gmap[r.lobby_id] }))
-      .filter(r => r.games && r.games.status === "closed")
+    return (rows||[]).map(r => ({ ...r, games: gmap[r.lobby_id] }))
+      .filter(r => r.games && r.games.status === "closed" && r.games.ranked === true)
       .sort((a,b) => new Date(b.games.ended_at) - new Date(a.games.ended_at)).slice(0,30);
   }
-  return { player, position, history };
+}
+
+async function loadProfileByPlayer(player){
+  let position = null;
+  try{ const { data:lb } = await sb.from("leaderboard").select("position").eq("id", player.id).maybeSingle(); position = lb ? lb.position : null; }catch(e){}
+  const history = await loadHistory(player.id);
+  let heroes = [];
+  try{
+    const { data, error } = await sb.rpc("app_user_hero_stats", { p_player_id: player.id, p_mode: "ranked" });
+    if(error) throw error;
+    heroes = (data || []).slice(0, 6).map(h => ({ hero:h.hero, games:h.games, rate: h.top_half_rate }));
+  }catch(e){
+    const H = {};
+    history.forEach(h => { if(h.hero){ (H[h.hero] = H[h.hero] || {g:0,w:0}); H[h.hero].g++; if(h.is_win) H[h.hero].w++; } });
+    heroes = Object.entries(H).sort((a,b)=>b[1].g-a[1].g).slice(0,6).map(([hero,s]) => ({ hero, games:s.g, rate:s.w/s.g }));
+  }
+  return { player, position, history, heroes };
+}
+
+async function loadProfileData(name){
+  const { data: player } = await sb.from("players")
+    .select("id, discord_id, username, rating, games, wins, losses").eq("username", name).maybeSingle();
+  if(!player) return null;
+  return loadProfileByPlayer(player);
 }
 
 async function renderProfile(){
   const box = $("profile-panel"); if(!box) return;
-  let name = profileTarget, isSelf = false;
+  let d = null, isSelf = false;
 
-  if(!name){
+  if(!profileTarget){
     const { data:{ session } } = await sb.auth.getSession();
     if(!session){
       box.innerHTML = `<p class="acct-muted" style="margin-bottom:16px">Sign in to see your own profile, or tap any player on the ladder.</p>
         <button class="btn-discord" id="prof-signin" style="margin:0 auto">${DISCORD_MARK} Sign in with Discord</button>`;
       $("prof-signin").onclick = signIn; return;
     }
-    let linked = null;
-    try { const { data } = await sb.rpc("get_my_link"); linked = data || null; } catch(e){}
-    if(!linked){
-      box.innerHTML = `<p class="acct-muted" style="margin-bottom:16px">You haven't linked an in-game name yet.</p>
-        <button class="btn btn-gold" id="prof-link" style="margin:0 auto">Connect your name</button>`;
+    const me = await myPlayer();
+    if(!me || !me.username){
+      box.innerHTML = `<p class="acct-muted" style="margin-bottom:16px">You haven't claimed an in-game name yet.</p>
+        <button class="btn btn-gold" id="prof-link" style="margin:0 auto">Claim your name</button>`;
       $("prof-link").onclick = () => show("account"); return;
     }
-    name = linked; isSelf = true;
+    isSelf = true;
+    box.innerHTML = `<div class="acct-muted">Loading profile...</div>`;
+    d = await loadProfileByPlayer(me);
+  } else {
+    box.innerHTML = `<div class="acct-muted">Loading profile...</div>`;
+    d = await loadProfileData(profileTarget);
   }
 
-  box.innerHTML = `<div class="acct-muted">Loading profile...</div>`;
-  const d = await loadProfileData(name);
-  if(!d){ box.innerHTML = `<p class="acct-muted">No player found for "${esc(name)}".</p>`; return; }
+  if(!d){ box.innerHTML = `<p class="acct-muted">No player found for "${esc(profileTarget||"")}".</p>`; return; }
 
   const p = d.player, games = p.games || 0, wr = games ? Math.round((p.wins/games)*100) : 0;
-
-  const H = {};
-  d.history.forEach(h => { if(h.hero){ (H[h.hero] = H[h.hero] || {g:0,w:0}); H[h.hero].g++; if(h.is_win) H[h.hero].w++; } });
-  const heroes = Object.entries(H).sort((a,b) => b[1].g - a[1].g).slice(0,5);
 
   const matches = d.history.slice(0,15).map(h => {
     const dl = Math.round(h.delta || 0);
@@ -270,10 +284,12 @@ async function renderProfile(){
     </div>`;
   }).join("");
 
+  const heroRows = d.heroes.map(h => `<div class="hero-row"><span class="hh">${esc(h.hero)}</span><span class="hg">${h.games}g</span><span class="hw">${Math.round((h.rate||0)*100)}%</span></div>`).join("");
+
   box.innerHTML = `
     <div class="profile-head">
       <div>
-        <div class="p-name">${esc(p.username || name)}${isSelf ? ' <span class="you">you</span>' : ''}</div>
+        <div class="p-name">${esc(p.username || "")}${isSelf ? ' <span class="you">you</span>' : ''}</div>
         <div class="p-sub2">${games ? (games + " ranked game" + (games===1?"":"s")) : "No ranked games yet"}</div>
       </div>
       <div class="p-rank">${d.position ? ("#"+d.position) : "Unranked"}</div>
@@ -290,9 +306,36 @@ async function renderProfile(){
         <div class="m-row m-head"><span>Date</span><span>Place</span><span>Hero</span><span class="m-delta">Change</span><span class="m-rating">Rating</span></div>
         ${matches}
       </div>` : ""}
-    ${heroes.length ? `<h3 class="p-sub">Heroes (recent)</h3>
-      <div class="p-heroes">
-        ${heroes.map(([h,s]) => `<div class="hero-row"><span class="hh">${esc(h)}</span><span class="hg">${s.g}g</span><span class="hw">${Math.round(s.w/s.g*100)}%</span></div>`).join("")}
-      </div>` : ""}
+    ${heroRows ? `<h3 class="p-sub">Heroes</h3>
+      <div class="p-heroes">${heroRows}</div>` : ""}
   `;
+}
+
+
+/* =========================================================================
+   HERO STATS  (global, app_hero_stats(mode))
+   ========================================================================= */
+async function renderHeroes(){
+  const box = $("heroes-panel"); if(!box) return;
+  box.innerHTML = `<div class="acct-muted" style="text-align:center">Loading...</div>`;
+  let rows = [];
+  try{
+    const { data, error } = await sb.rpc("app_hero_stats", { p_mode: "ranked" });
+    if(error) throw error;
+    rows = data || [];
+  }catch(e){ box.innerHTML = `<p class="acct-muted" style="text-align:center">Couldn't load hero stats.</p>`; return; }
+  if(!rows.length){ box.innerHTML = `<p class="acct-muted" style="text-align:center">No ranked hero data yet.</p>`; return; }
+  const pct = x => Math.round((x||0)*100)+"%";
+  const avg = x => (x!=null ? Number(x).toFixed(1) : "-");
+  box.innerHTML = `<div class="htable">
+    <div class="ht-row ht-head"><span>Hero</span><span>G</span><span>Top-half</span><span>Win</span><span>Avg</span><span>Pick</span></div>
+    ${rows.map(h => `<div class="ht-row">
+      <span class="ht-hero">${esc(h.hero)}</span>
+      <span class="ht-num">${h.games}</span>
+      <span class="ht-num gold">${pct(h.top_half_rate)}</span>
+      <span class="ht-num">${pct(h.win_rate)}</span>
+      <span class="ht-num">${avg(h.avg_place)}</span>
+      <span class="ht-num">${pct(h.play_rate)}</span>
+    </div>`).join("")}
+  </div>`;
 }

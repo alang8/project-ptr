@@ -22,6 +22,7 @@
   </a>
   <div class="tabs">
     <button class="tab-btn active" data-tab="ladder">Ladder</button>
+    <button class="tab-btn" data-tab="heroes">Heroes</button>
     <button class="tab-btn" data-tab="about">About</button>
     <button class="tab-btn" data-tab="format">Format</button>
     <button class="tab-btn" data-tab="compete">Compete</button>
@@ -61,6 +62,7 @@
       <div id="rows"></div>
     </div>
     <div class="err" id="err">Couldn't reach the ladder feed, retrying...</div>
+    <div id="pager" class="pager"></div>
     <p class="board-note">Every new season resets MMR to <span class="gold">500</span>. Standings refresh automatically.</p>
   </section>
 
@@ -152,6 +154,15 @@
       <p class="lede">Career stats, recent games, and hero usage. Tap any player on the ladder to view theirs.</p>
     </div>
     <div id="profile-panel" class="account-panel"><div class="acct-muted">Loading...</div></div>
+  </section>
+  <!-- ================= HEROES ================= -->
+  <section class="tab" id="heroes">
+    <div class="sec-head">
+      <div class="kicker">Meta</div>
+      <h2>Hero Stats</h2>
+      <p class="lede">Win rates, average placement, and pick rates across ranked games.</p>
+    </div>
+    <div id="heroes-panel"><div class="acct-muted" style="text-align:center">Loading...</div></div>
   </section>
 </main>
 
