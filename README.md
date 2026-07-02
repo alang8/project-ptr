@@ -9,7 +9,8 @@ competitive circuit for *The Bazaar*, played on the test realm.
 index.html      page structure + content (4 tabs + Account)
 styles.css      all styling
 app.js          tabs, leaderboard, Discord login, name-linking
-assets/         logos + favicon
+assets/         logos + favicon (gem)
+for-your-friend/  Supabase SQL + bot command spec (NOT part of the website)
 ```
 
 Plain static site, no build step. Deploy the folder as-is (Cloudflare Pages,
