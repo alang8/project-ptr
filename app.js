@@ -203,7 +203,7 @@ async function loadHistory(playerId){
   try{
     const { data, error } = await sb.from("lobby_final_results")
       .select("finish_order, placement, delta, rating_after, is_win, hero, games!inner(id, ended_at, rated, ranked, code, origin, status)")
-      .eq("player_id", playerId).eq("games.status","closed").eq("games.ranked", true)
+      .eq("player_id", playerId).eq("games.status","closed")
       .order("ended_at", { foreignTable:"games", ascending:false }).limit(30);
     if(error) throw error;
     return data || [];
@@ -216,7 +216,7 @@ async function loadHistory(playerId){
     if(ids.length){ const { data } = await sb.from("games").select("id, ended_at, rated, ranked, code, origin, status").in("id", ids); gs = data || []; }
     const gmap = Object.fromEntries(gs.map(g => [g.id, g]));
     return (rows||[]).map(r => ({ ...r, games: gmap[r.lobby_id] }))
-      .filter(r => r.games && r.games.status === "closed" && r.games.ranked === true)
+      .filter(r => r.games && r.games.status === "closed")
       .sort((a,b) => new Date(b.games.ended_at) - new Date(a.games.ended_at)).slice(0,30);
   }
 }
@@ -229,7 +229,7 @@ async function loadProfileByPlayer(player){
     try{
       const { data, error } = await sb.rpc("app_user_hero_stats", { p_player_id: player.id, p_mode: mode });
       if(error) throw error;
-      return (data || []).slice(0, 6).map(h => ({ hero:h.hero, games:h.games, rate: h.top_half_rate }));
+      return (data || []).filter(h => h.hero && h.hero.toLowerCase() !== "unknown").slice(0, 6).map(h => ({ hero:h.hero, games:h.games, rate: h.top_half_rate }));
     }catch(e){ return []; }
   }
   const [heroesRanked, heroesUnranked] = await Promise.all([heroStats("ranked"), heroStats("normal")]);
@@ -277,17 +277,15 @@ async function renderProfile(){
     const dl = Math.round(h.delta || 0);
     const cls = dl>0 ? "pos" : (dl<0 ? "neg" : "zero");
     const deltaTxt = dl>0 ? ("+"+dl) : (""+dl);
-    const origin = g.origin || (g.ranked ? "matchmaking" : g.code ? "imported" : "custom");
-    const badge = origin==="matchmaking" ? '<span class="m-badge ranked">Ranked</span>'
-                : origin==="imported" ? '<span class="m-badge imported">Imported</span>'
-                : '<span class="m-badge custom">Custom</span>';
-    const codeLabel = g.code ? `<span class="m-code">${esc(g.code)}</span>` : "";
+    const isRanked = g.origin ? g.origin==="matchmaking" : !!g.ranked;
+    const badge = isRanked ? '<span class="m-badge ranked">Ranked</span>'
+                           : '<span class="m-badge unranked">Unranked</span>';
     return `<div class="m-row">
       <span class="m-date">${fmtDate(g.ended_at)}</span>
       <span class="m-place">${ORD(h.placement)}</span>
       <span class="m-hero">${h.hero ? esc(h.hero) : "-"}</span>
       <span class="m-delta ${cls}">${g.rated!==false ? deltaTxt : ""}</span>
-      <span class="m-rating">${Math.round(h.rating_after)}${badge}${codeLabel}</span>
+      <span class="m-rating">${Math.round(h.rating_after)}${badge}</span>
     </div>`;
   }).join("");
 
@@ -336,7 +334,7 @@ async function renderHeroes(mode){
   try{
     const { data, error } = await sb.rpc("app_hero_stats", { p_mode: heroMode });
     if(error) throw error;
-    rows = data || [];
+    rows = (data || []).filter(h => h.hero && h.hero.toLowerCase() !== "unknown");
   }catch(e){ box.innerHTML = `<p class="acct-muted" style="text-align:center">Couldn't load hero stats.</p>`; return; }
   if(!rows.length){ box.innerHTML = `<p class="acct-muted" style="text-align:center">No ${heroMode==="ranked"?"ranked":"unranked"} hero data yet.</p>`; return; }
   const pct = x => Math.round((x||0)*100)+"%";
