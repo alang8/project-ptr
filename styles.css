@@ -282,6 +282,8 @@ footer .gold{color:var(--gold-deep)}
 .hero-row .hh{color:var(--ink)}
 .hero-row .hg{color:var(--ink-faint);text-align:right;font-family:'JetBrains Mono',monospace}
 .hero-row .hw{color:var(--gold);text-align:right;font-family:'JetBrains Mono',monospace}
+.hero-row.hero-head{font-family:'Cinzel',serif;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-faint);background:none!important}
+.hero-row.hero-head span:not(:first-child){text-align:right}
 
 /* ===================== PAGER ===================== */
 .pager{display:flex;align-items:center;justify-content:center;gap:12px;margin-top:16px}

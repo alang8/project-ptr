@@ -204,9 +204,9 @@ async function loadHistory(playerId){
     const { data, error } = await sb.from("lobby_final_results")
       .select("finish_order, placement, delta, rating_after, is_win, hero, games!inner(id, ended_at, rated, ranked, code, origin, status)")
       .eq("player_id", playerId).eq("games.status","closed")
-      .order("ended_at", { foreignTable:"games", ascending:false }).limit(30);
+      .order("ended_at", { foreignTable:"games", ascending:false, nullsFirst:false }).limit(30);
     if(error) throw error;
-    return data || [];
+    return (data || []).slice().sort((x,y) => new Date(y.games?.ended_at||0) - new Date(x.games?.ended_at||0));
   }catch(e){
     const { data: rows } = await sb.from("lobby_final_results")
       .select("finish_order, placement, delta, rating_after, is_win, hero, lobby_id")
@@ -232,8 +232,8 @@ async function loadProfileByPlayer(player){
       return (data || []).filter(h => h.hero && h.hero.toLowerCase() !== "unknown").slice(0, 6).map(h => ({ hero:h.hero, games:h.games, rate: h.top_half_rate }));
     }catch(e){ return []; }
   }
-  const [heroesRanked, heroesUnranked] = await Promise.all([heroStats("ranked"), heroStats("normal")]);
-  return { player, position, history, heroesRanked, heroesUnranked };
+  const heroes = await heroStats("all");
+  return { player, position, history, heroes };
 }
 
 async function loadProfileData(name){
@@ -289,9 +289,7 @@ async function renderProfile(){
     </div>`;
   }).join("");
 
-  const heroTable = list => list.map(h => `<div class="hero-row"><span class="hh">${esc(h.hero)}</span><span class="hg">${h.games}g</span><span class="hw">${Math.round((h.rate||0)*100)}%</span></div>`).join("");
-  const rankedRows = heroTable(d.heroesRanked);
-  const unrankedRows = heroTable(d.heroesUnranked);
+  const heroRows = d.heroes.map(h => `<div class="hero-row"><span class="hh">${esc(h.hero)}</span><span class="hg">${h.games}</span><span class="hw">${Math.round((h.rate||0)*100)}%</span></div>`).join("");
 
   box.innerHTML = `
     <div class="profile-head">
@@ -313,10 +311,11 @@ async function renderProfile(){
         <div class="m-row m-head"><span>Date</span><span>Place</span><span>Hero</span><span class="m-delta">Change</span><span class="m-rating">Rating</span></div>
         ${matches}
       </div>` : ""}
-    ${rankedRows ? `<h3 class="p-sub">Heroes <span class="p-sub-tag">Ranked</span></h3>
-      <div class="p-heroes">${rankedRows}</div>` : ""}
-    ${unrankedRows ? `<h3 class="p-sub">Heroes <span class="p-sub-tag">Unranked</span></h3>
-      <div class="p-heroes">${unrankedRows}</div>` : ""}
+    ${heroRows ? `<h3 class="p-sub">Heroes</h3>
+      <div class="p-heroes">
+        <div class="hero-row hero-head"><span>Hero</span><span>Games</span><span>Top-half</span></div>
+        ${heroRows}
+      </div>` : ""}
   `;
 }
 
