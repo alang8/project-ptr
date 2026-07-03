@@ -232,8 +232,8 @@ async function loadProfileByPlayer(player){
       return (data || []).filter(h => h.hero && h.hero.toLowerCase() !== "unknown").slice(0, 6).map(h => ({ hero:h.hero, games:h.games, rate: h.top_half_rate }));
     }catch(e){ return []; }
   }
-  const heroes = await heroStats("all");
-  return { player, position, history, heroes };
+  const [heroesRanked, heroesUnranked] = await Promise.all([heroStats("ranked"), heroStats("normal")]);
+  return { player, position, history, heroesRanked, heroesUnranked };
 }
 
 async function loadProfileData(name){
@@ -289,7 +289,15 @@ async function renderProfile(){
     </div>`;
   }).join("");
 
-  const heroRows = d.heroes.map(h => `<div class="hero-row"><span class="hh">${esc(h.hero)}</span><span class="hg">${h.games}</span><span class="hw">${Math.round((h.rate||0)*100)}%</span></div>`).join("");
+  const heroTable = (list, tag) => {
+    if(!list.length) return "";
+    const rows = list.map(h => `<div class="hero-row"><span class="hh">${esc(h.hero)}</span><span class="hg">${h.games}</span><span class="hw">${Math.round((h.rate||0)*100)}%</span></div>`).join("");
+    return `<h3 class="p-sub">Heroes <span class="p-sub-tag">${tag}</span></h3>
+      <div class="p-heroes">
+        <div class="hero-row hero-head"><span>Hero</span><span>Games</span><span>Top-half</span></div>
+        ${rows}
+      </div>`;
+  };
 
   box.innerHTML = `
     <div class="profile-head">
@@ -311,11 +319,8 @@ async function renderProfile(){
         <div class="m-row m-head"><span>Date</span><span>Place</span><span>Hero</span><span class="m-delta">Change</span><span class="m-rating">Rating</span></div>
         ${matches}
       </div>` : ""}
-    ${heroRows ? `<h3 class="p-sub">Heroes</h3>
-      <div class="p-heroes">
-        <div class="hero-row hero-head"><span>Hero</span><span>Games</span><span>Top-half</span></div>
-        ${heroRows}
-      </div>` : ""}
+    ${heroTable(d.heroesRanked, "Ranked")}
+    ${heroTable(d.heroesUnranked, "Unranked")}
   `;
 }
 
