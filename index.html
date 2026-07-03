@@ -22,7 +22,7 @@
   </a>
   <div class="tabs">
     <button class="tab-btn active" data-tab="ladder">Ladder</button>
-    <button class="tab-btn" data-tab="heroes">Heroes</button>
+    <button class="tab-btn" data-tab="heroes">Stats</button>
     <button class="tab-btn" data-tab="about">About</button>
     <button class="tab-btn" data-tab="format">Format</button>
     <button class="tab-btn" data-tab="compete">Compete</button>
@@ -177,12 +177,16 @@
     </div>
     <div id="profile-panel" class="account-panel"><div class="acct-muted">Loading...</div></div>
   </section>
-  <!-- ================= HEROES ================= -->
+  <!-- ================= STATS ================= -->
   <section class="tab" id="heroes">
     <div class="sec-head">
       <div class="kicker">Meta</div>
       <h2>Hero Stats</h2>
-      <p class="lede">Win rates, average placement, and pick rates across ranked games.</p>
+      <p class="lede">Win rates, average placement, and pick rates across every hero.</p>
+    </div>
+    <div class="mode-toggle" id="hero-mode">
+      <button data-mode="ranked" class="active">Ranked</button>
+      <button data-mode="normal">Unranked</button>
     </div>
     <div id="heroes-panel"><div class="acct-muted" style="text-align:center">Loading...</div></div>
   </section>

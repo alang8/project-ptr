@@ -225,17 +225,15 @@ async function loadProfileByPlayer(player){
   let position = null;
   try{ const { data:lb } = await sb.from("leaderboard").select("position").eq("id", player.id).maybeSingle(); position = lb ? lb.position : null; }catch(e){}
   const history = await loadHistory(player.id);
-  let heroes = [];
-  try{
-    const { data, error } = await sb.rpc("app_user_hero_stats", { p_player_id: player.id, p_mode: "ranked" });
-    if(error) throw error;
-    heroes = (data || []).slice(0, 6).map(h => ({ hero:h.hero, games:h.games, rate: h.top_half_rate }));
-  }catch(e){
-    const H = {};
-    history.forEach(h => { if(h.hero){ (H[h.hero] = H[h.hero] || {g:0,w:0}); H[h.hero].g++; if(h.is_win) H[h.hero].w++; } });
-    heroes = Object.entries(H).sort((a,b)=>b[1].g-a[1].g).slice(0,6).map(([hero,s]) => ({ hero, games:s.g, rate:s.w/s.g }));
+  async function heroStats(mode){
+    try{
+      const { data, error } = await sb.rpc("app_user_hero_stats", { p_player_id: player.id, p_mode: mode });
+      if(error) throw error;
+      return (data || []).slice(0, 6).map(h => ({ hero:h.hero, games:h.games, rate: h.top_half_rate }));
+    }catch(e){ return []; }
   }
-  return { player, position, history, heroes };
+  const [heroesRanked, heroesUnranked] = await Promise.all([heroStats("ranked"), heroStats("normal")]);
+  return { player, position, history, heroesRanked, heroesUnranked };
 }
 
 async function loadProfileData(name){
@@ -293,7 +291,9 @@ async function renderProfile(){
     </div>`;
   }).join("");
 
-  const heroRows = d.heroes.map(h => `<div class="hero-row"><span class="hh">${esc(h.hero)}</span><span class="hg">${h.games}g</span><span class="hw">${Math.round((h.rate||0)*100)}%</span></div>`).join("");
+  const heroTable = list => list.map(h => `<div class="hero-row"><span class="hh">${esc(h.hero)}</span><span class="hg">${h.games}g</span><span class="hw">${Math.round((h.rate||0)*100)}%</span></div>`).join("");
+  const rankedRows = heroTable(d.heroesRanked);
+  const unrankedRows = heroTable(d.heroesUnranked);
 
   box.innerHTML = `
     <div class="profile-head">
@@ -315,8 +315,10 @@ async function renderProfile(){
         <div class="m-row m-head"><span>Date</span><span>Place</span><span>Hero</span><span class="m-delta">Change</span><span class="m-rating">Rating</span></div>
         ${matches}
       </div>` : ""}
-    ${heroRows ? `<h3 class="p-sub">Heroes</h3>
-      <div class="p-heroes">${heroRows}</div>` : ""}
+    ${rankedRows ? `<h3 class="p-sub">Heroes <span class="p-sub-tag">Ranked</span></h3>
+      <div class="p-heroes">${rankedRows}</div>` : ""}
+    ${unrankedRows ? `<h3 class="p-sub">Heroes <span class="p-sub-tag">Unranked</span></h3>
+      <div class="p-heroes">${unrankedRows}</div>` : ""}
   `;
 }
 
@@ -324,16 +326,19 @@ async function renderProfile(){
 /* =========================================================================
    HERO STATS  (global, app_hero_stats(mode))
    ========================================================================= */
-async function renderHeroes(){
+let heroMode = "ranked";
+async function renderHeroes(mode){
+  heroMode = mode || heroMode || "ranked";
   const box = $("heroes-panel"); if(!box) return;
+  document.querySelectorAll("#hero-mode button").forEach(b => b.classList.toggle("active", b.dataset.mode===heroMode));
   box.innerHTML = `<div class="acct-muted" style="text-align:center">Loading...</div>`;
   let rows = [];
   try{
-    const { data, error } = await sb.rpc("app_hero_stats", { p_mode: "ranked" });
+    const { data, error } = await sb.rpc("app_hero_stats", { p_mode: heroMode });
     if(error) throw error;
     rows = data || [];
   }catch(e){ box.innerHTML = `<p class="acct-muted" style="text-align:center">Couldn't load hero stats.</p>`; return; }
-  if(!rows.length){ box.innerHTML = `<p class="acct-muted" style="text-align:center">No ranked hero data yet.</p>`; return; }
+  if(!rows.length){ box.innerHTML = `<p class="acct-muted" style="text-align:center">No ${heroMode==="ranked"?"ranked":"unranked"} hero data yet.</p>`; return; }
   const pct = x => Math.round((x||0)*100)+"%";
   const avg = x => (x!=null ? Number(x).toFixed(1) : "-");
   box.innerHTML = `<div class="htable">
@@ -348,3 +353,5 @@ async function renderHeroes(){
     </div>`).join("")}
   </div>`;
 }
+
+document.querySelectorAll("#hero-mode button").forEach(b => b.addEventListener("click", () => renderHeroes(b.dataset.mode)));
