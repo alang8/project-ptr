@@ -6,7 +6,7 @@
 const SUPABASE_URL = "https://rbvezddypfpjepofngqb.supabase.co";
 const SUPABASE_KEY = "sb_publishable_Tk-w3eZYTevhw8-5jxBOwg_MPaH4778";
 const DISCORD_URL  = "https://discord.gg/FCMSzHSAp7"
-const PAGE_SIZE    = 1000;
+const PAGE_SIZE    = 50;
 
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 const $  = id => document.getElementById(id);
@@ -357,3 +357,78 @@ async function renderHeroes(mode){
 }
 
 document.querySelectorAll("#hero-mode button").forEach(b => b.addEventListener("click", () => renderHeroes(b.dataset.mode)));
+
+
+/* =========================================================================
+   FEATURED LIVE MATCH  (read-only `featured_match` view)
+   ========================================================================= */
+let featStamp = "__init__";
+async function renderFeatured(){
+  const box = $("featured"); if(!box) return;
+  let f = null;
+  try{ const { data } = await sb.from("featured_match").select("*").single(); f = data; }
+  catch(e){ if(featStamp!==null){ box.innerHTML=""; featStamp=null; } return; }
+  if(!f || f.status !== "live"){
+    if(featStamp!=="none"){ box.innerHTML = `<div class="feat-idle"><span class="live-dot idle"></span> No live ranked match right now</div>`; featStamp="none"; }
+    return;
+  }
+  if(f.updated_at === featStamp) return;  // unchanged snapshot, skip re-render
+  featStamp = f.updated_at;
+
+  const standings = [...(f.standings||[])].sort((x,y)=>{
+    const px = x.place ?? Infinity, py = y.place ?? Infinity;
+    if(px !== py) return px - py;
+    if((y.wins||0) !== (x.wins||0)) return (y.wins||0) - (x.wins||0);
+    return (x.losses||0) - (y.losses||0);
+  });
+  const allPlaced = standings.length && standings.every(s => s.place != null);
+  const rows = standings.map(s => {
+    const champ = s.is_champion ? ' 🏆' : '';
+    const place = s.place != null ? `<span class="f-place">${ORD(s.place)}</span>` : `<span class="f-place live">live</span>`;
+    const name = s.player_id
+      ? `<a href="#profile" class="f-name" data-name="${esc(s.username)}">${esc(s.username)}${champ}</a>`
+      : `<span class="f-name">${esc(s.username)}${champ}</span>`;
+    return `<div class="f-row">${place}${name}<span class="f-rating">${s.rating!=null?Math.round(s.rating):"-"}</span><span class="f-wl"><span class="w">${s.wins||0}W</span> <span class="l">${s.losses||0}L</span></span></div>`;
+  }).join("");
+  const mins = f.started_at ? Math.max(0, Math.round((Date.now()-new Date(f.started_at))/60000)) : null;
+  const upd  = f.updated_at ? Math.max(0, Math.round((Date.now()-new Date(f.updated_at))/60000)) : null;
+  box.innerHTML = `<div class="feat-card">
+    <div class="feat-head">
+      <div class="feat-title"><span class="live-dot"></span> ${allPlaced ? "Latest Match" : "Featured Live Match"}</div>
+      <div class="feat-meta">Avg ${Math.round(f.avg_rating||0)} · ${f.player_count||standings.length} players${mins!=null?` · live ${mins}m`:""}</div>
+    </div>
+    <div class="feat-rows">${rows}</div>
+    ${upd!=null ? `<div class="feat-foot">updated ${upd}m ago</div>` : ""}
+  </div>`;
+  box.querySelectorAll(".f-name[data-name]").forEach(el => el.addEventListener("click", e => { e.preventDefault(); showProfile(el.dataset.name); }));
+}
+
+/* =========================================================================
+   SITE TOTALS  (read-only `site_totals` view)
+   ========================================================================= */
+async function renderTotals(){
+  const box = $("totals"); if(!box) return;
+  let t = null;
+  try{ const { data } = await sb.from("site_totals").select("*").single(); t = data; }
+  catch(e){ box.innerHTML=""; return; }
+  if(!t){ box.innerHTML=""; return; }
+  const rel = iso => {
+    if(!iso) return "-";
+    const m = Math.round((Date.now()-new Date(iso))/60000);
+    if(m < 1) return "just now";
+    if(m < 60) return m+"m ago";
+    const h = Math.round(m/60);
+    if(h < 24) return h+"h ago";
+    return Math.round(h/24)+"d ago";
+  };
+  box.innerHTML = `<div class="tot-tiles">
+      <div class="tot"><b>${t.total_players_played ?? t.total_players ?? 0}</b><span>Players</span></div>
+      <div class="tot"><b>${t.total_games ?? 0}</b><span>Games</span></div>
+      <div class="tot"><b>${t.ranked_games ?? 0}</b><span>Ranked</span></div>
+      <div class="tot"><b>${t.games_7d ?? 0}</b><span>Last 7d</span></div>
+    </div>
+    <div class="tot-strip">${t.active_players_7d ?? 0} active this week · last game ${rel(t.last_game_ended_at)}</div>`;
+}
+
+renderFeatured(); setInterval(renderFeatured, 60000);
+renderTotals();   setInterval(renderTotals, 60000);
