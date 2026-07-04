@@ -36,6 +36,11 @@ code{font-family:'JetBrains Mono',monospace;font-size:.82em;color:var(--gold-bri
   padding:10px clamp(12px,3vw,32px);
   background:linear-gradient(180deg,rgba(7,6,8,.96),rgba(7,6,8,.82));
   backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
+.nav-toggle{display:none;flex-direction:column;justify-content:center;gap:4px;width:34px;height:34px;padding:8px 7px;background:rgba(228,233,241,.03);border:1px solid var(--line);border-radius:8px;cursor:pointer;flex-shrink:0}
+.nav-toggle span{display:block;height:2px;width:100%;background:var(--ink-soft);border-radius:2px;transition:transform .25s,opacity .2s}
+.topbar.menu-open .nav-toggle span:nth-child(1){transform:translateY(6px) rotate(45deg)}
+.topbar.menu-open .nav-toggle span:nth-child(2){opacity:0}
+.topbar.menu-open .nav-toggle span:nth-child(3){transform:translateY(-6px) rotate(-45deg)}
 .brand{display:flex;align-items:center;gap:10px;text-decoration:none;flex-shrink:0}
 .brand img{height:28px;filter:drop-shadow(0 0 10px rgba(255,138,43,.35))}
 .brand .nm{font-family:'Cinzel',serif;font-size:17px;color:var(--ink);letter-spacing:.04em;line-height:1}
@@ -194,9 +199,18 @@ footer .gold{color:var(--gold-deep)}
 @media(max-width:700px){
   .topbar{gap:8px}
   .brand .nm{font-size:14px}
-  .tabs{order:3;width:100%;margin-left:0;margin-top:4px;gap:0;justify-content:flex-start;
-    padding-bottom:2px;-ms-overflow-style:none}
-  .tab-btn{padding:7px 9px;font-size:11.5px}
+  .nav-toggle{display:flex}
+  .tabs{position:absolute;top:100%;left:0;right:0;flex-direction:column;gap:2px;margin:0;padding:8px;
+    background:linear-gradient(180deg,rgba(13,10,14,.99),rgba(7,6,8,.99));
+    border:1px solid var(--line);border-top:none;border-radius:0 0 12px 12px;
+    box-shadow:0 22px 44px -22px rgba(0,0,0,.9);display:none;
+    max-height:calc(100vh - 58px);overflow-y:auto}
+  .topbar.menu-open .tabs{display:flex}
+  .tab-btn{width:100%;text-align:left;padding:12px 14px;font-size:14px;border-radius:8px}
+  .tab-btn.active{background:rgba(232,181,74,.08)}
+  .tab-btn.active::after{display:none}
+  .discord{display:none}
+  .auth-slot{margin-left:auto}
   .board-head,.row{grid-template-columns:38px 1fr 66px 66px;gap:6px;padding-left:12px;padding-right:12px}
   .handle{font-size:14px}
   .mmr{font-size:16px}

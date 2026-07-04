@@ -29,6 +29,20 @@ function show(name){
 }
 document.querySelectorAll("[data-tab]").forEach(b => b.addEventListener("click", () => b.dataset.tab==="profile" ? showProfile(null) : show(b.dataset.tab)));
 window.addEventListener("hashchange", () => { const h=location.hash.slice(1); if($(h)) show(h); });
+
+/* ---------- mobile menu ---------- */
+const topbar = document.querySelector(".topbar");
+const navToggle = $("nav-toggle");
+function closeMenu(){ if(topbar){ topbar.classList.remove("menu-open"); } if(navToggle){ navToggle.setAttribute("aria-expanded","false"); } }
+if(navToggle){
+  navToggle.addEventListener("click", e => {
+    e.stopPropagation();
+    const open = topbar.classList.toggle("menu-open");
+    navToggle.setAttribute("aria-expanded", open ? "true" : "false");
+  });
+}
+document.querySelectorAll(".tabs .tab-btn").forEach(b => b.addEventListener("click", closeMenu));
+document.addEventListener("click", e => { if(topbar && topbar.classList.contains("menu-open") && !topbar.contains(e.target)) closeMenu(); });
 if(location.hash.slice(1) && $(location.hash.slice(1))) show(location.hash.slice(1));
 
 /* =========================================================================
