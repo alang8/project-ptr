@@ -16,12 +16,13 @@
 
 
 <nav class="topbar">
-  <a class="brand" href="#ladder">
+  <a class="brand" href="#home">
     <img src="assets/icon.png" alt="">
     <span class="nm bd-display">PROJECT <em>PTR</em></span>
   </a>
   <div class="tabs">
-    <button class="tab-btn active" data-tab="ladder">Ladder</button>
+    <button class="tab-btn active" data-tab="home">Home</button>
+    <button class="tab-btn" data-tab="leaderboard">Leaderboard</button>
     <button class="tab-btn" data-tab="heroes">Stats</button>
     <button class="tab-btn" data-tab="about">About</button>
     <button class="tab-btn" data-tab="format">Format</button>
@@ -34,8 +35,8 @@
 </nav>
 
 <main>
-  <!-- ================= LADDER ================= -->
-  <section class="tab active" id="ladder">
+  <!-- ================= HOME ================= -->
+  <section class="tab active" id="home">
     <div class="masthead">
       <div class="kicker">Independent · The Bazaar Test Realm</div>
       <img class="wordmark" src="assets/wordmark_color.png" alt="The Bazaar">
@@ -43,6 +44,7 @@
       <p class="tagline">Real stakes for the test realm: a live competitive ladder built to put The Bazaar's new tournament feature through its paces.</p>
       <div class="cta-row">
         <a class="btn btn-gold" href="#" id="discord-hero" target="_blank" rel="noopener">Join the Discord</a>
+        <button class="btn btn-ghost" data-tab="leaderboard">View Leaderboard</button>
         <button class="btn btn-ghost" data-tab="format">How it works</button>
       </div>
     </div>
@@ -51,6 +53,15 @@
 
     <div id="featured"></div>
     <div id="totals"></div>
+  </section>
+
+  <!-- ================= LEADERBOARD ================= -->
+  <section class="tab" id="leaderboard">
+    <div class="sec-head">
+      <div class="kicker">Standings</div>
+      <h2>Leaderboard</h2>
+      <p class="lede">Every ranked game updates the ladder. Standings refresh automatically.</p>
+    </div>
 
     <div class="meta">
       <span class="item"><span class="live-dot"></span> Live Ladder</span>

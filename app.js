@@ -376,10 +376,13 @@ async function renderFeatured(){
   featStamp = f.updated_at;
 
   const standings = [...(f.standings||[])].sort((x,y)=>{
-    const px = x.place ?? Infinity, py = y.place ?? Infinity;
-    if(px !== py) return px - py;
-    if((y.wins||0) !== (x.wins||0)) return (y.wins||0) - (x.wins||0);
-    return (x.losses||0) - (y.losses||0);
+    const lx = x.place == null, ly = y.place == null;
+    if(lx !== ly) return lx ? -1 : 1;                 // still-alive (live) players first
+    if(lx){                                            // both live: better match record first
+      if((y.wins||0) !== (x.wins||0)) return (y.wins||0) - (x.wins||0);
+      return (x.losses||0) - (y.losses||0);
+    }
+    return (x.place||0) - (y.place||0);                // both placed: by finishing place
   });
   const allPlaced = standings.length && standings.every(s => s.place != null);
   const rows = standings.map(s => {
@@ -397,7 +400,10 @@ async function renderFeatured(){
       <div class="feat-title"><span class="live-dot"></span> ${allPlaced ? "Latest Match" : "Featured Live Match"}</div>
       <div class="feat-meta">Avg ${Math.round(f.avg_rating||0)} · ${f.player_count||standings.length} players${mins!=null?` · live ${mins}m`:""}</div>
     </div>
-    <div class="feat-rows">${rows}</div>
+    <div class="feat-rows">
+      <div class="f-row f-head"><span>#</span><span>Player</span><span class="f-rating">Rating</span><span class="f-wl">Match W/L</span></div>
+      ${rows}
+    </div>
     ${upd!=null ? `<div class="feat-foot">updated ${upd}m ago</div>` : ""}
   </div>`;
   box.querySelectorAll(".f-name[data-name]").forEach(el => el.addEventListener("click", e => { e.preventDefault(); showProfile(el.dataset.name); }));
