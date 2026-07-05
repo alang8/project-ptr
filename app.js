@@ -441,13 +441,18 @@ async function renderTotals(){
     if(h < 24) return h+"h ago";
     return Math.round(h/24)+"d ago";
   };
+  const players      = t.overall_players ?? t.total_players_played ?? t.total_players ?? 0;
+  const games        = t.overall_games ?? t.total_games ?? 0;
+  const rankedGames  = t.ranked_games ?? 0;
+  const rankedPlayers= t.ranked_players ?? t.total_players_played ?? 0;
+  const rankedWeek   = t.ranked_games_7d ?? 0;   // ranked 7d is clean; overall_games_7d is inflated
   box.innerHTML = `<div class="tot-tiles">
-      <div class="tot"><b>${t.total_players_played ?? t.total_players ?? 0}</b><span>Players</span></div>
-      <div class="tot"><b>${t.total_games ?? 0}</b><span>Games</span></div>
-      <div class="tot"><b>${t.ranked_games ?? 0}</b><span>Ranked</span></div>
-      <div class="tot"><b>${t.games_7d ?? 0}</b><span>Last 7d</span></div>
+      <div class="tot"><b>${players}</b><span>Players</span></div>
+      <div class="tot"><b>${games}</b><span>Games</span></div>
+      <div class="tot"><b>${rankedGames}</b><span>Ranked Games</span></div>
+      <div class="tot"><b>${rankedPlayers}</b><span>Ranked Players</span></div>
     </div>
-    <div class="tot-strip">${t.active_players_7d ?? 0} active this week · last game ${rel(t.last_game_ended_at)}</div>`;
+    <div class="tot-strip">${rankedWeek} ranked games this week · last game ${rel(t.last_game_ended_at)}</div>`;
 }
 
 renderFeatured(); setInterval(renderFeatured, 60000);
