@@ -30,6 +30,16 @@ function show(name){
 document.querySelectorAll("[data-tab]").forEach(b => b.addEventListener("click", () => b.dataset.tab==="profile" ? showProfile(null) : show(b.dataset.tab)));
 window.addEventListener("hashchange", () => { const h=location.hash.slice(1); if($(h)) show(h); });
 
+/* ---------- leaderboard search ---------- */
+const lbSearch = $("lb-search");
+if(lbSearch){
+  let deb;
+  const run = () => { searchTerm = lbSearch.value.trim(); currentPage = 0; tickBoard(); };
+  lbSearch.addEventListener("input", () => { clearTimeout(deb); deb = setTimeout(run, 250); });
+  const lbClear = $("lb-clear");
+  if(lbClear) lbClear.addEventListener("click", () => { lbSearch.value = ""; searchTerm = ""; currentPage = 0; lbSearch.focus(); tickBoard(); });
+}
+
 /* ---------- mobile menu ---------- */
 const topbar = document.querySelector(".topbar");
 const navToggle = $("nav-toggle");
@@ -51,13 +61,15 @@ if(location.hash.slice(1) && $(location.hash.slice(1))) show(location.hash.slice
 const MEDALS = {1:"🥇",2:"🥈",3:"🥉"};
 let prevRatings = {};
 let currentPage = 0;
+let searchTerm = "";
 async function fetchLeaderboard(page){
   const from = page*PAGE_SIZE, to = from+PAGE_SIZE-1;
-  const { data, error, count } = await sb
+  let q = sb
     .from("leaderboard")
     .select("id,discord_id,username,rating,games,wins,losses,position", { count:"exact" })
-    .order("position", { ascending:true })
-    .range(from, to);
+    .order("position", { ascending:true });
+  if(searchTerm) q = q.ilike("username", "%" + searchTerm.replace(/[%_]/g, "\\$&") + "%");
+  const { data, error, count } = await q.range(from, to);
   if(error) throw error;
   return {
     total: count ?? data.length,
@@ -72,6 +84,10 @@ function renderBoard(payload){
   $("err").style.display = "none";
   $("m-players").textContent = payload.total!=null ? payload.total : list.length;
   $("m-updated").textContent = new Date().toLocaleTimeString([], {hour:"2-digit",minute:"2-digit",second:"2-digit"});
+  if(!list.length){
+    $("rows").innerHTML = `<div class="lb-empty">${searchTerm ? `No players match "${esc(searchTerm)}".` : "No players yet."}</div>`;
+    renderPager(0); return;
+  }
   $("rows").innerHTML = list.map((p,i) => {
     const rank=p.position, games=p.games||0, wr=games?Math.round((p.wins/games)*100):0;
     const rc = MEDALS[rank] ? `<span class="medal">${MEDALS[rank]}</span>` : rank;
