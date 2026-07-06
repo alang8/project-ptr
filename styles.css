@@ -386,3 +386,5 @@ a.f-name:hover{color:var(--gold-bright)}
   color:var(--ink-faint);font-size:20px;line-height:1;cursor:pointer;padding:2px 8px;border-radius:6px}
 .lb-clear:hover{color:var(--loss)}
 .lb-empty{text-align:center;color:var(--ink-faint);font-size:14px;padding:28px 16px}
+
+.acct-actions{display:flex;gap:10px;justify-content:center;margin-top:16px}

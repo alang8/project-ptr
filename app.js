@@ -170,8 +170,10 @@ async function renderAccount(session){
   if(me && me.username){
     panel.innerHTML = head + `<div class="acct-linked">\u2705 Connected to <span class="nm">${esc(me.username)}</span></div>
       <p class="acct-hint">Your results are tracked on the ladder under this name.</p>
-      <button class="btn btn-gold" id="view-profile" style="margin-top:14px">View your profile</button>`;
+      <button class="btn btn-gold" id="view-profile" style="margin-top:14px">View your profile</button>
+      <button class="btn btn-ghost" id="change-name" style="margin-top:10px">Change name</button>`;
     $("view-profile").onclick = () => showProfile(null);
+    $("change-name").onclick = () => showChangeName(head, me.username);
     return;
   }
 
@@ -184,15 +186,33 @@ async function renderAccount(session){
   $("claim-btn").onclick = submitClaim;
 }
 
+function showChangeName(head, current){
+  panel.innerHTML = head + `
+    <div class="acct-linked" style="font-size:16px;color:var(--ink-soft)">Change your linked name</div>
+    <div class="field"><input id="ign" type="text" value="${esc(current)}" placeholder="Your in-game name" maxlength="40" autocomplete="off"></div>
+    <p class="acct-hint">Enter the exact name you use in The Bazaar. This re-points your account to the new name.</p>
+    <div class="acct-err" id="acct-err" style="display:none"></div>
+    <div class="acct-actions">
+      <button class="btn btn-gold" id="claim-btn">Save</button>
+      <button class="btn btn-ghost" id="change-cancel">Cancel</button>
+    </div>`;
+  const inp = $("ign");
+  inp.addEventListener("keydown", e => { if(e.key==="Enter") submitClaim(); });
+  $("claim-btn").onclick = submitClaim;
+  $("change-cancel").onclick = () => refreshAuth();
+  inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length);
+}
+
 async function submitClaim(){
   const name = ($("ign").value||"").trim();
   const errEl = $("acct-err"); errEl.style.display="none";
   const btn = $("claim-btn");
+  const label = btn.textContent;
   if(name.length<2){ errEl.textContent="Please enter your in-game name."; errEl.style.display="block"; return; }
-  btn.disabled=true; btn.textContent="Claiming...";
+  btn.disabled=true; btn.textContent="Saving...";
   let res=null;
   try{ const { data, error } = await sb.rpc("app_set_my_username",{ p_name:name }); if(error) throw error; res=data; }
-  catch(e){ errEl.textContent="Something went wrong. Please try again."; errEl.style.display="block"; btn.disabled=false; btn.textContent="Claim my name"; return; }
+  catch(e){ errEl.textContent="Something went wrong. Please try again."; errEl.style.display="block"; btn.disabled=false; btn.textContent=label; return; }
 
   const status = res && res.status;
   if(status==="ok"){ refreshAuth(); return; }
@@ -208,7 +228,7 @@ async function submitClaim(){
             : status==="unauthenticated" ? "Your session expired. Please sign in again."
             : "Couldn't claim that name. Please try again.";
   errEl.textContent=msg; errEl.style.display="block";
-  btn.disabled=false; btn.textContent="Claim my name";
+  btn.disabled=false; btn.textContent=label;
 }
 
 async function refreshAuth(){ const { data:{ session } } = await sb.auth.getSession(); renderSlot(session); renderAccount(session); }
