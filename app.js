@@ -250,24 +250,33 @@ const ORD = n => { const s=["th","st","nd","rd"], v=n%100; return n+(s[(v-20)%10
 function fmtDate(iso){ if(!iso) return ""; return new Date(iso).toLocaleDateString([], {month:"short", day:"numeric"}); }
 
 async function loadHistory(playerId){
+  if(!playerId) return [];
+  // Preferred: id-keyed RPC (migration 0062). Orders + limits server-side, works
+  // for username-only players, and includes DNF (no-show) rows. Returns a flat
+  // array newest-first: { code, finished_at, rated, ranked, origin, placement,
+  // delta, rating_after, hero, dnf, player_count }.
   try{
-    const { data, error } = await sb.from("lobby_final_results")
-      .select("finish_order, placement, delta, rating_after, is_win, hero, games!inner(id, ended_at, rated, ranked, code, origin, status)")
-      .eq("player_id", playerId).eq("games.status","closed")
-      .order("ended_at", { foreignTable:"games", ascending:false, nullsFirst:false }).limit(30);
+    const { data, error } = await sb.rpc("app_player_history_by_id", { p_player_id: playerId, p_limit: 25, p_mode: "all" });
     if(error) throw error;
-    return (data || []).slice().sort((x,y) => new Date(y.games?.ended_at||0) - new Date(x.games?.ended_at||0));
+    return data || [];
   }catch(e){
+    // Fallback (RPC not deployed yet, etc.): pull ALL rows, stitch games, sort
+    // client-side. No server-side limit -> no silently-dropped games.
     const { data: rows } = await sb.from("lobby_final_results")
-      .select("finish_order, placement, delta, rating_after, is_win, hero, lobby_id")
-      .eq("player_id", playerId).limit(60);
+      .select("placement, delta, rating_after, is_win, hero, lobby_id")
+      .eq("player_id", playerId);
     const ids = [...new Set((rows||[]).map(r => r.lobby_id))];
     let gs = [];
     if(ids.length){ const { data } = await sb.from("games").select("id, ended_at, rated, ranked, code, origin, status").in("id", ids); gs = data || []; }
     const gmap = Object.fromEntries(gs.map(g => [g.id, g]));
-    return (rows||[]).map(r => ({ ...r, games: gmap[r.lobby_id] }))
-      .filter(r => r.games && r.games.status === "closed")
-      .sort((a,b) => new Date(b.games.ended_at) - new Date(a.games.ended_at)).slice(0,30);
+    return (rows||[])
+      .map(r => { const g = gmap[r.lobby_id] || {}; return {
+        code:g.code, finished_at:g.ended_at, rated:g.rated, ranked:g.ranked, origin:g.origin,
+        placement:r.placement, delta:r.delta, rating_after:r.rating_after, hero:r.hero,
+        is_win:r.is_win, dnf:false, player_count:null, _status:g.status }; })
+      .filter(r => r._status === "closed")
+      .sort((a,b) => new Date(b.finished_at||0) - new Date(a.finished_at||0))
+      .slice(0, 25);
   }
 }
 
@@ -323,19 +332,27 @@ async function renderProfile(){
   const p = d.player, games = p.games || 0, wr = games ? Math.round((p.wins/games)*100) : 0;
 
   const matches = d.history.slice(0,15).map(h => {
-    const g = h.games || {};
+    const isRanked = h.origin ? h.origin==="matchmaking" : !!h.ranked;
+    const badge = isRanked ? '<span class="m-badge ranked">Ranked</span>'
+                           : '<span class="m-badge unranked">Unranked</span>';
+    if(h.dnf){
+      return `<div class="m-row m-dnf">
+        <span class="m-date">${fmtDate(h.finished_at)}</span>
+        <span class="m-place">-</span>
+        <span class="m-hero">did not connect</span>
+        <span class="m-delta zero"></span>
+        <span class="m-rating">-${badge}</span>
+      </div>`;
+    }
     const dl = Math.round(h.delta || 0);
     const cls = dl>0 ? "pos" : (dl<0 ? "neg" : "zero");
     const deltaTxt = dl>0 ? ("+"+dl) : (""+dl);
-    const isRanked = g.origin ? g.origin==="matchmaking" : !!g.ranked;
-    const badge = isRanked ? '<span class="m-badge ranked">Ranked</span>'
-                           : '<span class="m-badge unranked">Unranked</span>';
     return `<div class="m-row">
-      <span class="m-date">${fmtDate(g.ended_at)}</span>
-      <span class="m-place">${ORD(h.placement)}</span>
+      <span class="m-date">${fmtDate(h.finished_at)}</span>
+      <span class="m-place">${h.placement!=null ? ORD(h.placement) : "-"}</span>
       <span class="m-hero">${h.hero ? esc(h.hero) : "-"}</span>
-      <span class="m-delta ${cls}">${g.rated!==false ? deltaTxt : ""}</span>
-      <span class="m-rating">${Math.round(h.rating_after)}${badge}</span>
+      <span class="m-delta ${cls}">${h.rated!==false ? deltaTxt : ""}</span>
+      <span class="m-rating">${h.rating_after!=null ? Math.round(h.rating_after) : "-"}${badge}</span>
     </div>`;
   }).join("");
 

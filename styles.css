@@ -388,3 +388,6 @@ a.f-name:hover{color:var(--gold-bright)}
 .lb-empty{text-align:center;color:var(--ink-faint);font-size:14px;padding:28px 16px}
 
 .acct-actions{display:flex;gap:10px;justify-content:center;margin-top:16px}
+
+.m-row.m-dnf{opacity:.5}
+.m-row.m-dnf .m-hero{font-style:italic;color:var(--ink-faint)}
