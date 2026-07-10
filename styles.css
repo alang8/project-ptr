@@ -422,3 +422,26 @@ a.f-name:hover{color:var(--gold-bright)}
 .qg-list{margin:.4em 0 0;padding-left:18px}
 .qg-list li{font-size:14.5px;line-height:1.8;color:var(--ink-soft);margin-bottom:8px}
 @media(max-width:560px){.qg-tr{grid-template-columns:1fr;gap:4px}.qg-th{display:none}.qg-tr code{white-space:normal}}
+
+/* ===================== LIVE PAGE: QUEUE + SUBHEADS ===================== */
+.live-sub{font-family:'Cinzel',serif;font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--gold);text-align:center;margin:0 0 12px;display:flex;align-items:center;justify-content:center;gap:8px}
+.live-count{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--ink);background:rgba(232,181,74,.1);border:1px solid var(--line-gold);border-radius:999px;padding:1px 8px}
+.q-list{max-width:640px;margin:0 auto;background:linear-gradient(180deg,var(--panel),var(--bg-2));border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.q-row{display:grid;grid-template-columns:1fr 76px 56px 92px;gap:10px;align-items:center;padding:10px 16px;border-bottom:1px solid rgba(51,40,56,.5);font-size:13.5px}
+.q-row:last-child{border-bottom:none}
+.q-name{color:var(--ink);text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+a.q-name:hover{color:var(--gold-bright)}
+.q-plat{font-family:'Cinzel',serif;font-size:9px;letter-spacing:.08em;text-transform:uppercase;text-align:center;padding:2px 6px;border-radius:5px}
+.q-plat.dc{color:#c7ccf7;background:rgba(88,101,242,.14);border:1px solid rgba(88,101,242,.3)}
+.q-plat.qq{color:#8fd3ac;background:rgba(31,122,77,.16);border:1px solid rgba(134,208,154,.3)}
+.q-rating{font-family:'JetBrains Mono',monospace;text-align:right;color:var(--ink-soft)}
+.q-wait{font-family:'JetBrains Mono',monospace;text-align:right;font-size:11.5px;color:var(--ink-faint)}
+/* ===================== TOTALS: PLATFORM SPLIT ===================== */
+.tot-plat{max-width:340px;margin:12px auto 0}
+.plat-bar{display:flex;height:8px;border-radius:999px;overflow:hidden;background:rgba(255,255,255,.04);border:1px solid var(--line)}
+.plat-dc{background:#5865F2}
+.plat-qq{background:#3fae74}
+.plat-legend{display:flex;justify-content:center;gap:16px;margin-top:7px;font-size:11.5px;color:var(--ink-faint)}
+.plat-legend .pdot{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:5px;vertical-align:middle}
+.pdot.dc{background:#5865F2}.pdot.qq{background:#3fae74}
+@media(max-width:560px){.q-row{grid-template-columns:1fr 64px 44px 74px;gap:6px;padding:9px 12px;font-size:12.5px}}

@@ -26,7 +26,7 @@ function show(name){
   window.scrollTo({top:0, behavior:"auto"});
   if(name==="profile") renderProfile();
   if(name==="heroes") renderHeroes();
-  if(name==="spectate"){ renderSpectate(); if(!spectateTimer) spectateTimer = setInterval(renderSpectate, 60000); }
+  if(name==="spectate"){ renderSpectate(); if(!spectateTimer) spectateTimer = setInterval(renderSpectate, 30000); }
   else if(spectateTimer){ clearInterval(spectateTimer); spectateTimer = null; }
 }
 document.querySelectorAll("[data-tab]").forEach(b => b.addEventListener("click", () => b.dataset.tab==="profile" ? showProfile(null) : show(b.dataset.tab)));
@@ -447,14 +447,14 @@ function matchCardHTML(f, liveTitle){
     const name = s.player_id
       ? `<a href="#profile" class="f-name" data-name="${esc(s.username)}">${esc(s.username)}${champ}</a>`
       : `<span class="f-name">${esc(s.username)}${champ}</span>`;
-    return `<div class="f-row">${place}${name}<span class="f-rating">${s.rating!=null?Math.round(s.rating):"-"}</span><span class="f-wl"><span class="w">${s.wins||0}W</span> <span class="l">${s.losses||0}L</span></span></div>`;
+    return `<div class="f-row">${place}${name}<span class="f-rating">${s.rating!=null?Math.round(s.rating):"-"}</span><span class="f-wl">${s.wins!=null?`<span class="w">${s.wins}W</span>`:""} ${s.losses!=null?`<span class="l">${s.losses}L</span>`:""}</span></div>`;
   }).join("");
   const mins = f.started_at ? Math.max(0, Math.round((Date.now()-new Date(f.started_at))/60000)) : null;
   const upd  = f.updated_at ? Math.max(0, Math.round((Date.now()-new Date(f.updated_at))/60000)) : null;
   return `<div class="feat-card">
     <div class="feat-head">
       <div class="feat-title"><span class="live-dot"></span> ${allPlaced ? "Latest Match" : (liveTitle || "Live Match")}</div>
-      <div class="feat-meta">Avg ${Math.round(f.avg_rating||0)} · ${f.player_count||standings.length} players${mins!=null?` · live ${mins}m`:""}</div>
+      <div class="feat-meta">Avg ${Math.round(f.avg_rating||0)} · ${f.player_count||standings.length} players${mins!=null?` · live ${mins}m`:""}${f.has_standings===false?" · warming up":""}</div>
     </div>
     <div class="feat-rows">
       <div class="f-row f-head"><span>#</span><span>Player</span><span class="f-rating">Rating</span><span class="f-wl">Match W/L</span></div>
@@ -506,29 +506,59 @@ async function renderTotals(){
   const rankedGames  = t.ranked_games ?? 0;
   const rankedPlayers= t.ranked_players ?? t.total_players_played ?? 0;
   const rankedWeek   = t.ranked_games_7d ?? 0;   // ranked 7d is clean; overall_games_7d is inflated
+  const discord = t.discord_players, qq = t.qq_players;
+  const platTotal = (discord||0) + (qq||0);
+  const platBar = ((discord!=null || qq!=null) && platTotal>0) ? `
+    <div class="tot-plat" title="QQ includes players also linked on Discord">
+      <div class="plat-bar"><span class="plat-dc" style="width:${Math.round((discord||0)/platTotal*100)}%"></span><span class="plat-qq" style="width:${Math.round((qq||0)/platTotal*100)}%"></span></div>
+      <div class="plat-legend"><span><i class="pdot dc"></i>Discord ${discord||0}</span><span><i class="pdot qq"></i>QQ ${qq||0}</span></div>
+    </div>` : "";
   box.innerHTML = `<div class="tot-tiles">
       <div class="tot"><b>${players}</b><span>Players</span></div>
       <div class="tot"><b>${games}</b><span>Games</span></div>
       <div class="tot"><b>${rankedGames}</b><span>Ranked Games</span></div>
       <div class="tot"><b>${rankedPlayers}</b><span>Ranked Players</span></div>
     </div>
-    <div class="tot-strip">${rankedWeek} ranked games this week · last game ${rel(t.last_game_ended_at)}</div>`;
+    <div class="tot-strip">${rankedWeek} ranked games this week · last game ${rel(t.last_game_ended_at)}</div>
+    ${platBar}`;
 }
 
 async function renderSpectate(){
   const box = $("spectate-panel"); if(!box) return;
-  let matches = [];
-  try{
-    const { data, error } = await sb.from("live_matches").select("*");
-    if(error) throw error;
-    matches = (data||[]).filter(m => m.status === "live");
-  }catch(e){
-    try{ const { data } = await sb.from("featured_match").select("*").single(); if(data && data.status==="live") matches=[data]; }catch(_){}
+  let matches = [], queue = [];
+  const [mRes, qRes] = await Promise.allSettled([
+    sb.from("live_matches").select("lobby_id, code, started_at, updated_at, avg_rating, player_count, has_standings, standings").order("avg_rating", { ascending:false }),
+    sb.from("queue_snapshot").select("player_id, username, platform, rating, enqueued_at").order("rating", { ascending:false })
+  ]);
+  if(mRes.status==="fulfilled" && !mRes.value.error){ matches = mRes.value.data || []; }
+  else { try{ const { data } = await sb.from("featured_match").select("*").single(); if(data && data.status==="live") matches=[data]; }catch(_){} }
+  if(qRes.status==="fulfilled" && !qRes.value.error){ queue = qRes.value.data || []; }
+
+  const waited = iso => { if(!iso) return ""; const m=Math.max(0,Math.round((Date.now()-new Date(iso))/60000)); if(m<1) return "just now"; if(m<60) return "waiting "+m+"m"; return "waiting "+Math.round(m/60)+"h"; };
+  const platBadge = p => p==="qq" ? '<span class="q-plat qq">QQ</span>' : '<span class="q-plat dc">Discord</span>';
+
+  let queueHTML;
+  if(queue.length){
+    queueHTML = `<div class="q-list">` + queue.map(p => `<div class="q-row"><a href="#profile" class="q-name" data-name="${esc(p.username||"")}">${esc(p.username||"Unknown")}</a>${platBadge(p.platform)}<span class="q-rating">${p.rating!=null?Math.round(p.rating):"-"}</span><span class="q-wait">${waited(p.enqueued_at)}</span></div>`).join("") + `</div>`;
+  } else {
+    queueHTML = `<div class="feat-idle"><span class="live-dot idle"></span> Nobody in the queue right now</div>`;
   }
-  if(!matches.length){ box.innerHTML = `<div class="feat-idle"><span class="live-dot idle"></span> No live matches right now</div>`; return; }
-  matches.sort((x,y) => (y.avg_rating||0) - (x.avg_rating||0));
-  box.innerHTML = matches.map(m => matchCardHTML(m, "Live Match")).join("");
+
+  let matchesHTML;
+  if(matches.length){
+    matches.sort((x,y)=>(y.avg_rating||0)-(x.avg_rating||0));
+    matchesHTML = matches.map(m => matchCardHTML(m, "Live Match")).join("");
+  } else {
+    matchesHTML = `<div class="feat-idle"><span class="live-dot idle"></span> No live matches right now</div>`;
+  }
+
+  box.innerHTML = `
+    <h3 class="live-sub">In Queue${queue.length?` <span class="live-count">${queue.length}</span>`:""}</h3>
+    ${queueHTML}
+    <h3 class="live-sub" style="margin-top:26px">Live Matches${matches.length?` <span class="live-count">${matches.length}</span>`:""}</h3>
+    ${matchesHTML}`;
   wireProfileLinks(box);
+  box.querySelectorAll(".q-name[data-name]").forEach(el => el.addEventListener("click", e => { e.preventDefault(); showProfile(el.dataset.name); }));
 }
 
 renderFeatured(); setInterval(renderFeatured, 60000);
