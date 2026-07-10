@@ -24,12 +24,14 @@
   <div class="tabs">
     <button class="tab-btn active" data-tab="home">Home</button>
     <button class="tab-btn" data-tab="leaderboard">Leaderboard</button>
+    <button class="tab-btn" data-tab="spectate">Spectate</button>
     <button class="tab-btn" data-tab="heroes">Stats</button>
     <button class="tab-btn" data-tab="about">About</button>
     <button class="tab-btn" data-tab="format">Format</button>
     <button class="tab-btn" data-tab="compete">Compete</button>
     <button class="tab-btn" data-tab="account">Account</button>
     <button class="tab-btn" data-tab="profile">Profile</button>
+    <button class="tab-btn" data-tab="qqguide">QQ 指南</button>
   </div>
   <a class="discord" id="discord-top" href="#" target="_blank" rel="noopener">Join Discord</a>
   <div id="auth-slot" class="auth-slot"></div>
@@ -209,6 +211,78 @@
       <button data-mode="normal">Unranked</button>
     </div>
     <div id="heroes-panel"><div class="acct-muted" style="text-align:center">Loading...</div></div>
+  </section>
+  <!-- ================= SPECTATE ================= -->
+  <section class="tab" id="spectate">
+    <div class="sec-head">
+      <div class="kicker">Live</div>
+      <h2>Spectate</h2>
+      <p class="lede">Every ranked match in progress right now.</p>
+    </div>
+    <div id="spectate-panel"><div class="acct-muted" style="text-align:center">Loading...</div></div>
+  </section>
+  <!-- ================= QQ GUIDE ================= -->
+  <section class="tab" id="qqguide">
+    <div class="sec-head">
+      <div class="kicker">QQ · 中国</div>
+      <h2>Bazaar 匹配机器人</h2>
+      <p class="lede">在群里发送指令，机器人帮你自动匹配同水平对手，匹配成功后直接在游戏内收到邀请。</p>
+    </div>
+
+    <div class="mmrbox qg-box">
+      <h3 class="qg-h">这是什么</h3>
+      <p>这是 Bazaar 锦标赛的排队匹配机器人。你只需在群里发送几个指令，机器人会把水平相近的玩家凑成一桌；凑齐后，<strong>游戏内会自动收到对局邀请</strong>，打完后自动记录战绩与积分。全程无需自己上报成绩。</p>
+      <div class="qg-note"><strong>只需两步：</strong>先 <code>绑定</code> 你的游戏内名称，再发送 <code>排队</code>。就这么简单。</div>
+    </div>
+
+    <div class="mmrbox qg-box">
+      <h3 class="qg-h">快速上手</h3>
+      <div class="steps">
+        <div class="step"><p><strong>绑定名称：</strong>发送 <code>绑定 你的游戏名</code>，把你的 QQ 和游戏内 Bazaar 名称关联起来。名称必须与游戏内<strong>完全一致</strong>（大小写也要一样），否则邀请无法送达。</p></div>
+        <div class="step"><p><strong>加入队列：</strong>发送 <code>排队</code>。机器人会告诉你当前有多少人在等待。</p></div>
+        <div class="step"><p><strong>等待匹配：</strong>凑齐同水平玩家后，机器人自动建桌。你会在<strong>游戏内收到邀请</strong>。</p></div>
+        <div class="step"><p><strong>进入对局：</strong>打开 Bazaar 接受邀请即可。<strong>没看到邀请？重启一下游戏</strong>，邀请就会出现。</p></div>
+        <div class="step"><p><strong>开打：</strong>全员到齐后自动开始；打完战绩与积分自动结算。</p></div>
+      </div>
+    </div>
+
+    <div class="mmrbox qg-box">
+      <h3 class="qg-h">全部指令</h3>
+      <p class="qg-lead">在<strong>群聊</strong>里直接发送即可。指令和内容之间<strong>有没有空格都可以</strong>（例如 <code>绑定LittleMonk</code> 和 <code>绑定 LittleMonk</code> 效果一样）。</p>
+      <div class="qg-table">
+        <div class="qg-tr qg-th"><span>指令</span><span>作用</span><span>示例</span></div>
+        <div class="qg-tr"><span><code>绑定 &lt;名称&gt;</code><br><span class="qg-alias">也可用 link</span></span><span>绑定你的游戏内 Bazaar 名称（第一次使用必做）</span><span><code>绑定 LittleMonk</code></span></div>
+        <div class="qg-tr"><span><code>排队</code><br><span class="qg-alias">也可用 queue</span></span><span>加入匹配队列，等待凑桌</span><span><code>排队</code></span></div>
+        <div class="qg-tr"><span><code>退出排队</code><br><span class="qg-alias">也可用 取消排队 / leave</span></span><span>离开队列，不再等待匹配</span><span><code>退出排队</code></span></div>
+        <div class="qg-tr"><span><code>队列状态</code><br><span class="qg-alias">也可用 queue-status</span></span><span>查看你是否在队列中、当前有多少人在等</span><span><code>队列状态</code></span></div>
+      </div>
+    </div>
+
+    <div class="mmrbox qg-box">
+      <h3 class="qg-h">实际对话示例</h3>
+      <div class="qg-term">
+        <div><span class="tag">你 ▸</span> <span class="me">绑定 LittleMonk</span></div>
+        <div><span class="tag">机器人 ▸</span> <span class="bot">已绑定：LittleMonk。发送「排队」加入匹配。</span></div>
+        <div class="sp">&nbsp;</div>
+        <div><span class="tag">你 ▸</span> <span class="me">排队</span></div>
+        <div><span class="tag">机器人 ▸</span> <span class="bot">已加入匹配队列。当前 3 人等待中。匹配成功后将在游戏内收到邀请。</span></div>
+        <div class="sp">&nbsp;</div>
+        <div><span class="tag">你 ▸</span> <span class="me">队列状态</span></div>
+        <div><span class="tag">机器人 ▸</span> <span class="bot">你在队列中。当前 3 人等待。</span></div>
+      </div>
+    </div>
+
+    <div class="mmrbox qg-box">
+      <h3 class="qg-h">注意事项</h3>
+      <ul class="qg-list">
+        <li><strong>名称要和游戏内一模一样</strong>。大小写、空格都要对上，否则匹配成功后邀请发不出去。</li>
+        <li><strong>邀请在游戏内，不在 QQ</strong>。匹配成功后请打开 Bazaar 查看；没看到就<strong>重启游戏</strong>。</li>
+        <li><strong>只在群里发指令</strong>。私聊无法排队。</li>
+        <li><strong>机器人只回应指令</strong>。普通聊天不会有任何回复，这是正常的，不是坏了。</li>
+        <li><strong>一次只能在一个对局里</strong>。如果提示你已在房间中，说明上一局还没结束。</li>
+      </ul>
+      <div class="qg-note ok"><strong>没收到回复？</strong> 先检查指令有没有写对（例如 <code>排队</code> 不能写成 <code>排 队</code>），再确认你是在<strong>群里</strong>发的。仍有问题请联系管理员。</div>
+    </div>
   </section>
 </main>
 

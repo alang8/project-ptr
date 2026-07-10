@@ -119,9 +119,9 @@ main{max-width:880px;margin:0 auto;padding:0 18px 90px;position:relative;z-index
 @keyframes flash{0%{background:rgba(232,181,74,.15)}100%{background:transparent}}
 .rank{font-family:'Cinzel',serif;font-size:17px;color:var(--ink-faint);text-align:center}
 .rank .medal{font-size:20px;line-height:1;display:block}
-.row:nth-child(1) .rank{color:var(--gold-bright)}
-.row:nth-child(2) .rank{color:var(--chrome)}
-.row:nth-child(3) .rank{color:var(--gem-bright)}
+.row.rk1 .rank{color:var(--gold-bright)}
+.row.rk2 .rank{color:var(--chrome)}
+.row.rk3 .rank{color:var(--gem-bright)}
 .player{min-width:0}
 .handle{font-weight:600;font-size:15.5px;color:var(--ink);display:flex;align-items:center;gap:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .handle .at{color:var(--gold-deep);font-weight:700}
@@ -391,3 +391,34 @@ a.f-name:hover{color:var(--gold-bright)}
 
 .m-row.m-dnf{opacity:.5}
 .m-row.m-dnf .m-hero{font-style:italic;color:var(--ink-faint)}
+
+#spectate-panel{max-width:640px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+
+/* ===================== QQ GUIDE (site-themed, CJK) ===================== */
+#qqguide{font-family:"PingFang SC","Microsoft YaHei","Noto Sans SC","Hiragino Sans GB","Segoe UI",sans-serif}
+#qqguide .sec-head h2{font-family:inherit;color:var(--gold-bright)}
+#qqguide .sec-head .lede{font-family:inherit;font-style:normal}
+.qg-box{padding:22px}
+.qg-h{font-family:inherit;font-size:16px;color:var(--gold-bright);letter-spacing:0;margin:0 0 12px;text-align:left;display:flex;align-items:center;gap:8px}
+.qg-h::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--gem-bright);box-shadow:0 0 8px var(--gem);flex:none}
+#qqguide p,.qg-lead{font-size:14.5px;line-height:1.85;color:var(--ink-soft);margin:.5em 0}
+#qqguide p strong,#qqguide li strong{color:var(--ink)}
+#qqguide .steps{margin-top:4px}
+#qqguide .step p{font-size:14.5px;line-height:1.8}
+.qg-note{border-radius:10px;padding:12px 14px;margin-top:12px;font-size:14px;line-height:1.75;border:1px solid var(--line-gold);background:rgba(232,181,74,.06);color:var(--ink)}
+.qg-note.ok{border-color:rgba(134,208,154,.3);background:rgba(134,208,154,.07)}
+.qg-note strong{color:var(--gold-bright)}
+.qg-note.ok strong{color:var(--win)}
+.qg-table{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-top:8px}
+.qg-tr{display:grid;grid-template-columns:1.1fr 1.7fr 1fr;gap:10px;padding:11px 14px;border-bottom:1px solid rgba(51,40,56,.5);font-size:13.5px;line-height:1.6;align-items:start}
+.qg-tr:last-child{border-bottom:none}
+.qg-th{font-family:'Cinzel',serif;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-faint);background:rgba(232,181,74,.03)}
+.qg-alias{display:inline-block;color:var(--ink-faint);font-size:12px;margin-top:3px}
+.qg-term{background:#0a0f14;border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin-top:8px;font-family:'JetBrains Mono',"Microsoft YaHei",monospace;font-size:12.5px;line-height:1.95;overflow-x:auto}
+.qg-term .tag{color:var(--ink-faint)}
+.qg-term .me{color:var(--gem-bright)}
+.qg-term .bot{color:var(--ink-soft)}
+.qg-term .sp{line-height:.5}
+.qg-list{margin:.4em 0 0;padding-left:18px}
+.qg-list li{font-size:14.5px;line-height:1.8;color:var(--ink-soft);margin-bottom:8px}
+@media(max-width:560px){.qg-tr{grid-template-columns:1fr;gap:4px}.qg-th{display:none}.qg-tr code{white-space:normal}}

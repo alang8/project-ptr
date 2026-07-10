@@ -26,6 +26,8 @@ function show(name){
   window.scrollTo({top:0, behavior:"auto"});
   if(name==="profile") renderProfile();
   if(name==="heroes") renderHeroes();
+  if(name==="spectate"){ renderSpectate(); if(!spectateTimer) spectateTimer = setInterval(renderSpectate, 60000); }
+  else if(spectateTimer){ clearInterval(spectateTimer); spectateTimer = null; }
 }
 document.querySelectorAll("[data-tab]").forEach(b => b.addEventListener("click", () => b.dataset.tab==="profile" ? showProfile(null) : show(b.dataset.tab)));
 window.addEventListener("hashchange", () => { const h=location.hash.slice(1); if($(h)) show(h); });
@@ -62,6 +64,7 @@ const MEDALS = {1:"🥇",2:"🥈",3:"🥉"};
 let prevRatings = {};
 let currentPage = 0;
 let searchTerm = "";
+let spectateTimer = null;
 async function fetchLeaderboard(page){
   const from = page*PAGE_SIZE, to = from+PAGE_SIZE-1;
   let q = sb
@@ -92,7 +95,7 @@ function renderBoard(payload){
     const rank=p.position, games=p.games||0, wr=games?Math.round((p.wins/games)*100):0;
     const rc = MEDALS[rank] ? `<span class="medal">${MEDALS[rank]}</span>` : rank;
     const ch = prevRatings[p.key]!==undefined && prevRatings[p.key]!==p.rating;
-    return `<div class="row ${rank<=3?'top':''} ${ch?'flash':''}" ${p.uname?`data-name="${esc(p.uname)}"`:''} style="animation-delay:${i*40}ms">
+    return `<div class="row ${rank<=3?('top rk'+rank):''} ${ch?'flash':''}" ${p.uname?`data-name="${esc(p.uname)}"`:''} style="animation-delay:${i*40}ms">
       <div class="rank">${rc}</div>
       <div class="player"><div class="handle">${esc(p.name)}</div><span class="hero">${games} game${games===1?'':'s'}</span></div>
       <div class="mmr">${p.rating}</div>
@@ -430,26 +433,12 @@ document.querySelectorAll("#hero-mode button").forEach(b => b.addEventListener("
    FEATURED LIVE MATCH  (read-only `featured_match` view)
    ========================================================================= */
 let featStamp = "__init__";
-async function renderFeatured(){
-  const box = $("featured"); if(!box) return;
-  let f = null;
-  try{ const { data } = await sb.from("featured_match").select("*").single(); f = data; }
-  catch(e){ if(featStamp!==null){ box.innerHTML=""; featStamp=null; } return; }
-  if(!f || f.status !== "live"){
-    if(featStamp!=="none"){ box.innerHTML = `<div class="feat-idle"><span class="live-dot idle"></span> No live ranked match right now</div>`; featStamp="none"; }
-    return;
-  }
-  if(f.updated_at === featStamp) return;  // unchanged snapshot, skip re-render
-  featStamp = f.updated_at;
-
+function matchCardHTML(f, liveTitle){
   const standings = [...(f.standings||[])].sort((x,y)=>{
     const lx = x.place == null, ly = y.place == null;
-    if(lx !== ly) return lx ? -1 : 1;                 // still-alive (live) players first
-    if(lx){                                            // both live: better match record first
-      if((y.wins||0) !== (x.wins||0)) return (y.wins||0) - (x.wins||0);
-      return (x.losses||0) - (y.losses||0);
-    }
-    return (x.place||0) - (y.place||0);                // both placed: by finishing place
+    if(lx !== ly) return lx ? -1 : 1;
+    if(lx){ if((y.wins||0)!==(x.wins||0)) return (y.wins||0)-(x.wins||0); return (x.losses||0)-(y.losses||0); }
+    return (x.place||0)-(y.place||0);
   });
   const allPlaced = standings.length && standings.every(s => s.place != null);
   const rows = standings.map(s => {
@@ -462,9 +451,9 @@ async function renderFeatured(){
   }).join("");
   const mins = f.started_at ? Math.max(0, Math.round((Date.now()-new Date(f.started_at))/60000)) : null;
   const upd  = f.updated_at ? Math.max(0, Math.round((Date.now()-new Date(f.updated_at))/60000)) : null;
-  box.innerHTML = `<div class="feat-card">
+  return `<div class="feat-card">
     <div class="feat-head">
-      <div class="feat-title"><span class="live-dot"></span> ${allPlaced ? "Latest Match" : "Featured Live Match"}</div>
+      <div class="feat-title"><span class="live-dot"></span> ${allPlaced ? "Latest Match" : (liveTitle || "Live Match")}</div>
       <div class="feat-meta">Avg ${Math.round(f.avg_rating||0)} · ${f.player_count||standings.length} players${mins!=null?` · live ${mins}m`:""}</div>
     </div>
     <div class="feat-rows">
@@ -473,7 +462,25 @@ async function renderFeatured(){
     </div>
     ${upd!=null ? `<div class="feat-foot">updated ${upd}m ago</div>` : ""}
   </div>`;
+}
+
+function wireProfileLinks(box){
   box.querySelectorAll(".f-name[data-name]").forEach(el => el.addEventListener("click", e => { e.preventDefault(); showProfile(el.dataset.name); }));
+}
+
+async function renderFeatured(){
+  const box = $("featured"); if(!box) return;
+  let f = null;
+  try{ const { data } = await sb.from("featured_match").select("*").single(); f = data; }
+  catch(e){ if(featStamp!==null){ box.innerHTML=""; featStamp=null; } return; }
+  if(!f || f.status !== "live"){
+    if(featStamp!=="none"){ box.innerHTML = `<div class="feat-idle"><span class="live-dot idle"></span> No live ranked match right now</div>`; featStamp="none"; }
+    return;
+  }
+  if(f.updated_at === featStamp) return;
+  featStamp = f.updated_at;
+  box.innerHTML = matchCardHTML(f, "Featured Live Match");
+  wireProfileLinks(box);
 }
 
 /* =========================================================================
@@ -506,6 +513,22 @@ async function renderTotals(){
       <div class="tot"><b>${rankedPlayers}</b><span>Ranked Players</span></div>
     </div>
     <div class="tot-strip">${rankedWeek} ranked games this week · last game ${rel(t.last_game_ended_at)}</div>`;
+}
+
+async function renderSpectate(){
+  const box = $("spectate-panel"); if(!box) return;
+  let matches = [];
+  try{
+    const { data, error } = await sb.from("live_matches").select("*");
+    if(error) throw error;
+    matches = (data||[]).filter(m => m.status === "live");
+  }catch(e){
+    try{ const { data } = await sb.from("featured_match").select("*").single(); if(data && data.status==="live") matches=[data]; }catch(_){}
+  }
+  if(!matches.length){ box.innerHTML = `<div class="feat-idle"><span class="live-dot idle"></span> No live matches right now</div>`; return; }
+  matches.sort((x,y) => (y.avg_rating||0) - (x.avg_rating||0));
+  box.innerHTML = matches.map(m => matchCardHTML(m, "Live Match")).join("");
+  wireProfileLinks(box);
 }
 
 renderFeatured(); setInterval(renderFeatured, 60000);
