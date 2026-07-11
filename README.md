@@ -6,38 +6,54 @@ competitive circuit for *The Bazaar*, played on the test realm.
 ## Structure
 
 ```
-index.html      page structure + content (4 tabs + Account)
+index.html      page structure + all content
 styles.css      all styling
-app.js          tabs, leaderboard, Discord login, name-linking
+app.js          tabs, leaderboard, live match/queue, profiles, stats, auth
 assets/         logos + favicon (gem)
-for-your-friend/  Supabase SQL + bot command spec (NOT part of the website)
 ```
 
 Plain static site, no build step. Deploy the folder as-is (Cloudflare Pages,
 Netlify, Vercel, or GitHub Pages); `index.html` is the entry point, no build command.
+
+## Pages
+
+- **Home:** masthead, featured live match card, site totals (with Discord/QQ split)
+- **Leaderboard:** ranked ladder, 50 per page, searchable by name
+- **Spectate:** live matchmaking queue + every match currently in progress
+- **Stats:** per-hero performance, with a Ranked/Unranked toggle
+- **About / Format / Compete:** what the project is, how rating works, how to play
+- **Account:** Discord sign-in, claim or change your in-game name
+- **Profile:** career stats, recent games, hero breakdown (ranked + unranked)
+- **QQ guide:** Chinese-language guide for the QQ bot
 
 ## Configuration (top of `app.js`)
 
 - `DISCORD_URL`: invite link for the "Join Discord" buttons.
 - `SUPABASE_URL` / `SUPABASE_KEY`: project URL + **publishable/anon** key (read-only,
   safe in the browser). Never put the `service_role` key here.
+- `PAGE_SIZE`: leaderboard rows per page (default 50).
 
-## Discord login + name linking
+## Backend
 
-Lets a player sign in with Discord and connect their in-game name so results are
-tracked. Requires one-time setup on the Supabase side (see `for-your-friend/`):
+The site is a **read-only consumer** of a Supabase backend maintained separately,
+alongside the Discord and QQ bots. It reads with the anon key and makes exactly one
+write: a signed-in user setting their own in-game name.
 
-1. **Discord app:** create one at discord.com/developers → OAuth2 → add redirect
-   `https://rbvezddypfpjepofngqb.supabase.co/auth/v1/callback` → copy Client ID + Secret.
-2. **Supabase:** Authentication → Providers → enable Discord, paste ID + Secret.
-3. **Supabase:** Authentication → URL Configuration → add Redirect URLs for
-   `http://localhost:8000` (dev) and your production URL.
-4. **Database:** run `for-your-friend/supabase_setup.sql`.
-5. **Bot:** add the `/link` command per `for-your-friend/bot_link_command.md`.
+Reads: `leaderboard`, `players`, `games`, `lobby_final_results`, `featured_match`,
+`live_matches`, `queue_snapshot`, `site_totals`, plus the hero-stats and
+player-history RPCs.
 
-The full login flow needs a real redirect URL, so test against a local server
-(`python3 -m http.server 8000`) or the hosted site, not a `file://` page. The
-read-only leaderboard works without any of this.
+Write: `app_set_my_username`, so a signed-in user can claim or change their own name.
+
+Features degrade gracefully when a backend view or RPC isn't available yet, so the
+site stays up even if a migration hasn't been applied.
+
+## Discord login
+
+Sign-in uses Supabase Auth with Discord OAuth. The site's origin must be listed
+under Supabase Authentication, URL Configuration, Redirect URLs. The login flow needs
+a real redirect URL, so test against a local server (`python3 -m http.server 8000`)
+or the hosted site, not a `file://` page. The read-only pages work without any of this.
 
 ## Note
 
