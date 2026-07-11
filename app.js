@@ -526,7 +526,7 @@ async function renderSpectate(){
   const box = $("spectate-panel"); if(!box) return;
   let matches = [], queue = [];
   const [mRes, qRes] = await Promise.allSettled([
-    sb.from("live_matches").select("lobby_id, code, started_at, updated_at, avg_rating, player_count, has_standings, standings").order("avg_rating", { ascending:false }),
+    sb.from("live_matches").select("lobby_id, code, started_at, updated_at, avg_rating, player_count, has_standings, standings").order("avg_rating", { ascending:false }).limit(20),
     sb.from("queue_snapshot").select("player_id, username, platform, rating, enqueued_at").order("rating", { ascending:false })
   ]);
   if(mRes.status==="fulfilled" && !mRes.value.error){ matches = mRes.value.data || []; }
