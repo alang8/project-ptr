@@ -160,7 +160,7 @@ async function signIn(){
   sessionStorage.setItem("ptr_login","1");
   await sb.auth.signInWithOAuth({ provider:"discord", options:{ redirectTo: location.origin } });
 }
-async function signOut(){ await sb.auth.signOut(); }
+async function signOut(){ profileCache.delete("me"); await sb.auth.signOut(); }
 
 function renderSlot(session){
   if(!slot) return;
@@ -252,6 +252,7 @@ async function submitClaim(){
 async function refreshAuth(){ const { data:{ session } } = await sb.auth.getSession(); renderSlot(session); renderAccount(session); }
 sb.auth.onAuthStateChange((event, session) => {
   renderSlot(session); renderAccount(session);
+  if(event==="SIGNED_OUT") profileCache.delete("me");
   if(event==="SIGNED_IN" && sessionStorage.getItem("ptr_login")){
     sessionStorage.removeItem("ptr_login");
     show("account");
@@ -263,6 +264,10 @@ refreshAuth();
    PROFILE / STATS
    ========================================================================= */
 let profileTarget = null;
+let profileCache = new Map();
+const PROFILE_TTL = 45*1000;
+function getCachedProfile(key){ const e = profileCache.get(key); return e && Date.now()-e.ts < PROFILE_TTL ? e.data : null; }
+function setCachedProfile(key, data){ profileCache.set(key, { data, ts: Date.now() }); }
 function showProfile(name){ profileTarget = name || null; show("profile"); }
 const ORD = n => { const s=["th","st","nd","rd"], v=n%100; return n+(s[(v-20)%10]||s[v]||s[0]); };
 function fmtDate(iso){ if(!iso) return ""; return new Date(iso).toLocaleDateString([], {month:"short", day:"numeric"}); }
@@ -319,11 +324,19 @@ async function renderProfile(){
       $("prof-link").onclick = () => show("account"); return;
     }
     isSelf = true;
-    box.innerHTML = `<div class="acct-muted">Loading profile...</div>`;
-    d = await loadProfileByPlayer(me);
+    d = getCachedProfile("me");
+    if(!d){
+      box.innerHTML = `<div class="acct-muted">Loading profile...</div>`;
+      d = await loadProfileByPlayer(me);
+      if(d) setCachedProfile("me", d);
+    }
   } else {
-    box.innerHTML = `<div class="acct-muted">Loading profile...</div>`;
-    d = await loadProfileData(profileTarget);
+    d = getCachedProfile(profileTarget);
+    if(!d){
+      box.innerHTML = `<div class="acct-muted">Loading profile...</div>`;
+      d = await loadProfileData(profileTarget);
+      if(d) setCachedProfile(profileTarget, d);
+    }
   }
 
   if(!d){ box.innerHTML = `<p class="acct-muted">No player found for "${esc(profileTarget||"")}".</p>`; return; }
@@ -395,17 +408,9 @@ async function renderProfile(){
    HERO STATS  (global, app_hero_stats(mode))
    ========================================================================= */
 let heroMode = "ranked";
-async function renderHeroes(mode){
-  heroMode = mode || heroMode || "ranked";
-  const box = $("heroes-panel"); if(!box) return;
-  document.querySelectorAll("#hero-mode button").forEach(b => b.classList.toggle("active", b.dataset.mode===heroMode));
-  box.innerHTML = `<div class="acct-muted" style="text-align:center">Loading...</div>`;
-  let rows = [];
-  try{
-    const { data, error } = await sb.rpc("app_hero_stats", { p_mode: heroMode });
-    if(error) throw error;
-    rows = (data || []).filter(h => h.hero && h.hero.toLowerCase() !== "unknown");
-  }catch(e){ box.innerHTML = `<p class="acct-muted" style="text-align:center">Couldn't load hero stats.</p>`; return; }
+let heroCache = null;
+const HERO_TTL = 5*60*1000;
+function renderHeroesRows(box, rows){
   if(!rows.length){ box.innerHTML = `<p class="acct-muted" style="text-align:center">No ${heroMode==="ranked"?"ranked":"unranked"} hero data yet.</p>`; return; }
   const pct = x => Math.round((x||0)*100)+"%";
   const avg = x => (x!=null ? Number(x).toFixed(1) : "-");
@@ -420,6 +425,24 @@ async function renderHeroes(mode){
       <span class="ht-num">${pct(h.play_rate)}</span>
     </div>`).join("")}
   </div>`;
+}
+async function renderHeroes(mode){
+  heroMode = mode || heroMode || "ranked";
+  const box = $("heroes-panel"); if(!box) return;
+  document.querySelectorAll("#hero-mode button").forEach(b => b.classList.toggle("active", b.dataset.mode===heroMode));
+
+  const cached = heroCache && Date.now()-heroCache.ts < HERO_TTL ? heroCache[heroMode] : null;
+  if(cached){ renderHeroesRows(box, cached); return; }
+
+  box.innerHTML = `<div class="acct-muted" style="text-align:center">Loading...</div>`;
+  let rows = [];
+  try{
+    const { data, error } = await sb.rpc("app_hero_stats", { p_mode: heroMode });
+    if(error) throw error;
+    rows = (data || []).filter(h => h.hero && h.hero.toLowerCase() !== "unknown");
+    heroCache = heroCache || { ts: Date.now() }; heroCache[heroMode] = rows; heroCache.ts = Date.now();
+  }catch(e){ box.innerHTML = `<p class="acct-muted" style="text-align:center">Couldn't load hero stats.</p>`; return; }
+  renderHeroesRows(box, rows);
 }
 
 document.querySelectorAll("#hero-mode button").forEach(b => b.addEventListener("click", () => renderHeroes(b.dataset.mode)));
