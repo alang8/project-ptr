@@ -8,7 +8,16 @@ const SUPABASE_KEY = "sb_publishable_Tk-w3eZYTevhw8-5jxBOwg_MPaH4778";
 const DISCORD_URL  = "https://discord.gg/FCMSzHSAp7"
 const PAGE_SIZE    = 50;
 
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+let sb;
+try { sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY); }
+catch(e){
+  console.error("supabase-js failed to load", e);
+  const banner = document.createElement("div");
+  banner.style.cssText = "padding:14px;text-align:center;background:#3a1d1d;color:#ff9b9b;font-size:14px";
+  banner.textContent = "Couldn't load the live data feed. Please reload.";
+  document.body.prepend(banner);
+  throw e;
+}
 const $  = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 

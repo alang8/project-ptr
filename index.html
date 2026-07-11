@@ -10,6 +10,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=Spectral:ital,wght@0,300;0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
+<script>window.supabase||document.write('<script src="https://unpkg.com/@supabase/supabase-js@2"><\/script>')</script>
 <script src="app.js" defer></script>
 </head>
 <body>
@@ -54,8 +55,8 @@
 
     <div class="divider"><span class="bar"></span><img src="assets/gem.png" alt=""><span class="bar"></span></div>
 
-    <div id="featured"></div>
-    <div id="totals"></div>
+    <div id="featured"><div class="acct-muted" style="text-align:center">Loading live match…</div></div>
+    <div id="totals"><div class="acct-muted" style="text-align:center">Loading totals…</div></div>
   </section>
 
   <!-- ================= LEADERBOARD ================= -->
