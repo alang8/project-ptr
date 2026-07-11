@@ -28,6 +28,11 @@ function show(name){
   if(name==="heroes") renderHeroes();
   if(name==="spectate"){ renderSpectate(); if(!spectateTimer) spectateTimer = setInterval(renderSpectate, 30000); }
   else if(spectateTimer){ clearInterval(spectateTimer); spectateTimer = null; }
+
+  if(name==="leaderboard"){ startTimer("lb", tickBoard, LB_INTERVAL); }
+  else stopTimer("lb");
+  if(name==="home"){ startTimer("feat", renderFeatured, FEAT_INTERVAL); startTimer("tot", renderTotals, TOT_INTERVAL); }
+  else { stopTimer("feat"); stopTimer("tot"); }
 }
 document.querySelectorAll("[data-tab]").forEach(b => b.addEventListener("click", () => b.dataset.tab==="profile" ? showProfile(null) : show(b.dataset.tab)));
 window.addEventListener("hashchange", () => { const h=location.hash.slice(1); if($(h)) show(h); });
@@ -64,6 +69,18 @@ let prevRatings = {};
 let currentPage = 0;
 let searchTerm = "";
 let spectateTimer = null;
+let lbTimer = null, featTimer = null, totTimer = null;
+const LB_INTERVAL = 30000, FEAT_INTERVAL = 60000, TOT_INTERVAL = 120000;
+function startTimer(name, fn, ms){
+  if(name==="lb"&&!lbTimer){ tickBoard(); lbTimer = setInterval(tickBoard, ms); }
+  if(name==="feat"&&!featTimer){ renderFeatured(); featTimer = setInterval(renderFeatured, ms); }
+  if(name==="tot"&&!totTimer){ renderTotals(); totTimer = setInterval(renderTotals, ms); }
+}
+function stopTimer(name){
+  if(name==="lb"&&lbTimer){ clearInterval(lbTimer); lbTimer = null; }
+  if(name==="feat"&&featTimer){ clearInterval(featTimer); featTimer = null; }
+  if(name==="tot"&&totTimer){ clearInterval(totTimer); totTimer = null; }
+}
 async function fetchLeaderboard(page){
   const from = page*PAGE_SIZE, to = from+PAGE_SIZE-1;
   let q = sb
@@ -127,7 +144,6 @@ function renderPager(total){
   if(prev) prev.onclick = () => goToPage(currentPage-1);
   if(next) next.onclick = () => goToPage(currentPage+1);
 }
-tickBoard(); setInterval(tickBoard, 30000);
 $("rows").addEventListener("click", e => { const r=e.target.closest(".row[data-name]"); if(r) showProfile(r.dataset.name); });
 
 /* =========================================================================
@@ -541,7 +557,16 @@ async function renderSpectate(){
   box.querySelectorAll(".q-name[data-name]").forEach(el => el.addEventListener("click", e => { e.preventDefault(); showProfile(el.dataset.name); }));
 }
 
-renderFeatured(); setInterval(renderFeatured, 60000);
-renderTotals();   setInterval(renderTotals, 60000);
+show(location.hash.slice(1) && $(location.hash.slice(1)) ? location.hash.slice(1) : "home");
 
-if(location.hash.slice(1) && $(location.hash.slice(1))) show(location.hash.slice(1));
+document.addEventListener("visibilitychange", () => {
+  if(document.hidden){
+    stopTimer("lb"); stopTimer("feat"); stopTimer("tot");
+    if(spectateTimer){ clearInterval(spectateTimer); spectateTimer = null; }
+  } else {
+    const t = (location.hash.slice(1) && $(location.hash.slice(1))) ? location.hash.slice(1) : "home";
+    if(t==="leaderboard") startTimer("lb", tickBoard, LB_INTERVAL);
+    if(t==="home"){ startTimer("feat", renderFeatured, FEAT_INTERVAL); startTimer("tot", renderTotals, TOT_INTERVAL); }
+    if(t==="spectate") renderSpectate();
+  }
+});
