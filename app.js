@@ -253,32 +253,13 @@ function fmtDate(iso){ if(!iso) return ""; return new Date(iso).toLocaleDateStri
 
 async function loadHistory(playerId){
   if(!playerId) return [];
-  // Preferred: id-keyed RPC (migration 0062). Orders + limits server-side, works
-  // for username-only players, and includes DNF (no-show) rows. Returns a flat
-  // array newest-first: { code, finished_at, rated, ranked, origin, placement,
-  // delta, rating_after, hero, dnf, player_count }.
   try{
     const { data, error } = await sb.rpc("app_player_history_by_id", { p_player_id: playerId, p_limit: 25, p_mode: "all" });
     if(error) throw error;
     return data || [];
   }catch(e){
-    // Fallback (RPC not deployed yet, etc.): pull ALL rows, stitch games, sort
-    // client-side. No server-side limit -> no silently-dropped games.
-    const { data: rows } = await sb.from("lobby_final_results")
-      .select("placement, delta, rating_after, is_win, hero, lobby_id")
-      .eq("player_id", playerId);
-    const ids = [...new Set((rows||[]).map(r => r.lobby_id))];
-    let gs = [];
-    if(ids.length){ const { data } = await sb.from("games").select("id, ended_at, rated, ranked, code, origin, status").in("id", ids); gs = data || []; }
-    const gmap = Object.fromEntries(gs.map(g => [g.id, g]));
-    return (rows||[])
-      .map(r => { const g = gmap[r.lobby_id] || {}; return {
-        code:g.code, finished_at:g.ended_at, rated:g.rated, ranked:g.ranked, origin:g.origin,
-        placement:r.placement, delta:r.delta, rating_after:r.rating_after, hero:r.hero,
-        is_win:r.is_win, dnf:false, player_count:null, _status:g.status }; })
-      .filter(r => r._status === "closed")
-      .sort((a,b) => new Date(b.finished_at||0) - new Date(a.finished_at||0))
-      .slice(0, 25);
+    console.error("app_player_history_by_id failed", e);
+    return [];
   }
 }
 
