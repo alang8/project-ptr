@@ -8,7 +8,16 @@ const SUPABASE_KEY = "sb_publishable_Tk-w3eZYTevhw8-5jxBOwg_MPaH4778";
 const DISCORD_URL  = "https://discord.gg/FCMSzHSAp7"
 const PAGE_SIZE    = 50;
 
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+let sb;
+try { sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY); }
+catch(e){
+  console.error("supabase-js failed to load", e);
+  const banner = document.createElement("div");
+  banner.style.cssText = "padding:14px;text-align:center;background:#3a1d1d;color:#ff9b9b;font-size:14px";
+  banner.textContent = "Couldn't load the live data feed. Please reload.";
+  document.body.prepend(banner);
+  throw e;
+}
 const $  = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 
@@ -28,6 +37,11 @@ function show(name){
   if(name==="heroes") renderHeroes();
   if(name==="spectate"){ renderSpectate(); if(!spectateTimer) spectateTimer = setInterval(renderSpectate, 30000); }
   else if(spectateTimer){ clearInterval(spectateTimer); spectateTimer = null; }
+
+  if(name==="leaderboard"){ startTimer("lb", tickBoard, LB_INTERVAL); }
+  else stopTimer("lb");
+  if(name==="home"){ startTimer("feat", renderFeatured, FEAT_INTERVAL); startTimer("tot", renderTotals, TOT_INTERVAL); }
+  else { stopTimer("feat"); stopTimer("tot"); }
 }
 document.querySelectorAll("[data-tab]").forEach(b => b.addEventListener("click", () => b.dataset.tab==="profile" ? showProfile(null) : show(b.dataset.tab)));
 window.addEventListener("hashchange", () => { const h=location.hash.slice(1); if($(h)) show(h); });
@@ -55,7 +69,6 @@ if(navToggle){
 }
 document.querySelectorAll(".tabs .tab-btn").forEach(b => b.addEventListener("click", closeMenu));
 document.addEventListener("click", e => { if(topbar && topbar.classList.contains("menu-open") && !topbar.contains(e.target)) closeMenu(); });
-if(location.hash.slice(1) && $(location.hash.slice(1))) show(location.hash.slice(1));
 
 /* =========================================================================
    LEADERBOARD  (read-only `leaderboard` view)
@@ -65,11 +78,23 @@ let prevRatings = {};
 let currentPage = 0;
 let searchTerm = "";
 let spectateTimer = null;
+let lbTimer = null, featTimer = null, totTimer = null;
+const LB_INTERVAL = 30000, FEAT_INTERVAL = 60000, TOT_INTERVAL = 120000;
+function startTimer(name, fn, ms){
+  if(name==="lb"&&!lbTimer){ tickBoard(); lbTimer = setInterval(tickBoard, ms); }
+  if(name==="feat"&&!featTimer){ renderFeatured(); featTimer = setInterval(renderFeatured, ms); }
+  if(name==="tot"&&!totTimer){ renderTotals(); totTimer = setInterval(renderTotals, ms); }
+}
+function stopTimer(name){
+  if(name==="lb"&&lbTimer){ clearInterval(lbTimer); lbTimer = null; }
+  if(name==="feat"&&featTimer){ clearInterval(featTimer); featTimer = null; }
+  if(name==="tot"&&totTimer){ clearInterval(totTimer); totTimer = null; }
+}
 async function fetchLeaderboard(page){
   const from = page*PAGE_SIZE, to = from+PAGE_SIZE-1;
   let q = sb
     .from("leaderboard")
-    .select("id,discord_id,username,rating,games,wins,losses,position", { count:"exact" })
+    .select("id,username,rating,games,wins,losses,position", { count:"exact" })
     .order("position", { ascending:true });
   if(searchTerm) q = q.ilike("username", "%" + searchTerm.replace(/[%_]/g, "\\$&") + "%");
   const { data, error, count } = await q.range(from, to);
@@ -128,7 +153,6 @@ function renderPager(total){
   if(prev) prev.onclick = () => goToPage(currentPage-1);
   if(next) next.onclick = () => goToPage(currentPage+1);
 }
-tickBoard(); setInterval(tickBoard, 30000);
 $("rows").addEventListener("click", e => { const r=e.target.closest(".row[data-name]"); if(r) showProfile(r.dataset.name); });
 
 /* =========================================================================
@@ -145,7 +169,7 @@ async function signIn(){
   sessionStorage.setItem("ptr_login","1");
   await sb.auth.signInWithOAuth({ provider:"discord", options:{ redirectTo: location.origin } });
 }
-async function signOut(){ await sb.auth.signOut(); }
+async function signOut(){ profileCache.delete("me"); await sb.auth.signOut(); }
 
 function renderSlot(session){
   if(!slot) return;
@@ -237,6 +261,7 @@ async function submitClaim(){
 async function refreshAuth(){ const { data:{ session } } = await sb.auth.getSession(); renderSlot(session); renderAccount(session); }
 sb.auth.onAuthStateChange((event, session) => {
   renderSlot(session); renderAccount(session);
+  if(event==="SIGNED_OUT") profileCache.delete("me");
   if(event==="SIGNED_IN" && sessionStorage.getItem("ptr_login")){
     sessionStorage.removeItem("ptr_login");
     show("account");
@@ -248,38 +273,23 @@ refreshAuth();
    PROFILE / STATS
    ========================================================================= */
 let profileTarget = null;
+let profileCache = new Map();
+const PROFILE_TTL = 45*1000;
+function getCachedProfile(key){ const e = profileCache.get(key); return e && Date.now()-e.ts < PROFILE_TTL ? e.data : null; }
+function setCachedProfile(key, data){ profileCache.set(key, { data, ts: Date.now() }); }
 function showProfile(name){ profileTarget = name || null; show("profile"); }
 const ORD = n => { const s=["th","st","nd","rd"], v=n%100; return n+(s[(v-20)%10]||s[v]||s[0]); };
 function fmtDate(iso){ if(!iso) return ""; return new Date(iso).toLocaleDateString([], {month:"short", day:"numeric"}); }
 
 async function loadHistory(playerId){
   if(!playerId) return [];
-  // Preferred: id-keyed RPC (migration 0062). Orders + limits server-side, works
-  // for username-only players, and includes DNF (no-show) rows. Returns a flat
-  // array newest-first: { code, finished_at, rated, ranked, origin, placement,
-  // delta, rating_after, hero, dnf, player_count }.
   try{
     const { data, error } = await sb.rpc("app_player_history_by_id", { p_player_id: playerId, p_limit: 25, p_mode: "all" });
     if(error) throw error;
     return data || [];
   }catch(e){
-    // Fallback (RPC not deployed yet, etc.): pull ALL rows, stitch games, sort
-    // client-side. No server-side limit -> no silently-dropped games.
-    const { data: rows } = await sb.from("lobby_final_results")
-      .select("placement, delta, rating_after, is_win, hero, lobby_id")
-      .eq("player_id", playerId);
-    const ids = [...new Set((rows||[]).map(r => r.lobby_id))];
-    let gs = [];
-    if(ids.length){ const { data } = await sb.from("games").select("id, ended_at, rated, ranked, code, origin, status").in("id", ids); gs = data || []; }
-    const gmap = Object.fromEntries(gs.map(g => [g.id, g]));
-    return (rows||[])
-      .map(r => { const g = gmap[r.lobby_id] || {}; return {
-        code:g.code, finished_at:g.ended_at, rated:g.rated, ranked:g.ranked, origin:g.origin,
-        placement:r.placement, delta:r.delta, rating_after:r.rating_after, hero:r.hero,
-        is_win:r.is_win, dnf:false, player_count:null, _status:g.status }; })
-      .filter(r => r._status === "closed")
-      .sort((a,b) => new Date(b.finished_at||0) - new Date(a.finished_at||0))
-      .slice(0, 25);
+    console.error("app_player_history_by_id failed", e);
+    return [];
   }
 }
 
@@ -300,7 +310,7 @@ async function loadProfileByPlayer(player){
 
 async function loadProfileData(name){
   const { data: player } = await sb.from("players")
-    .select("id, discord_id, username, rating, games, wins, losses").eq("username", name).maybeSingle();
+    .select("id, username, rating, games, wins, losses").eq("username", name).maybeSingle();
   if(!player) return null;
   return loadProfileByPlayer(player);
 }
@@ -323,11 +333,19 @@ async function renderProfile(){
       $("prof-link").onclick = () => show("account"); return;
     }
     isSelf = true;
-    box.innerHTML = `<div class="acct-muted">Loading profile...</div>`;
-    d = await loadProfileByPlayer(me);
+    d = getCachedProfile("me");
+    if(!d){
+      box.innerHTML = `<div class="acct-muted">Loading profile...</div>`;
+      d = await loadProfileByPlayer(me);
+      if(d) setCachedProfile("me", d);
+    }
   } else {
-    box.innerHTML = `<div class="acct-muted">Loading profile...</div>`;
-    d = await loadProfileData(profileTarget);
+    d = getCachedProfile(profileTarget);
+    if(!d){
+      box.innerHTML = `<div class="acct-muted">Loading profile...</div>`;
+      d = await loadProfileData(profileTarget);
+      if(d) setCachedProfile(profileTarget, d);
+    }
   }
 
   if(!d){ box.innerHTML = `<p class="acct-muted">No player found for "${esc(profileTarget||"")}".</p>`; return; }
@@ -399,17 +417,9 @@ async function renderProfile(){
    HERO STATS  (global, app_hero_stats(mode))
    ========================================================================= */
 let heroMode = "ranked";
-async function renderHeroes(mode){
-  heroMode = mode || heroMode || "ranked";
-  const box = $("heroes-panel"); if(!box) return;
-  document.querySelectorAll("#hero-mode button").forEach(b => b.classList.toggle("active", b.dataset.mode===heroMode));
-  box.innerHTML = `<div class="acct-muted" style="text-align:center">Loading...</div>`;
-  let rows = [];
-  try{
-    const { data, error } = await sb.rpc("app_hero_stats", { p_mode: heroMode });
-    if(error) throw error;
-    rows = (data || []).filter(h => h.hero && h.hero.toLowerCase() !== "unknown");
-  }catch(e){ box.innerHTML = `<p class="acct-muted" style="text-align:center">Couldn't load hero stats.</p>`; return; }
+let heroCache = null;
+const HERO_TTL = 5*60*1000;
+function renderHeroesRows(box, rows){
   if(!rows.length){ box.innerHTML = `<p class="acct-muted" style="text-align:center">No ${heroMode==="ranked"?"ranked":"unranked"} hero data yet.</p>`; return; }
   const pct = x => Math.round((x||0)*100)+"%";
   const avg = x => (x!=null ? Number(x).toFixed(1) : "-");
@@ -424,6 +434,24 @@ async function renderHeroes(mode){
       <span class="ht-num">${pct(h.play_rate)}</span>
     </div>`).join("")}
   </div>`;
+}
+async function renderHeroes(mode){
+  heroMode = mode || heroMode || "ranked";
+  const box = $("heroes-panel"); if(!box) return;
+  document.querySelectorAll("#hero-mode button").forEach(b => b.classList.toggle("active", b.dataset.mode===heroMode));
+
+  const cached = heroCache && Date.now()-heroCache.ts < HERO_TTL ? heroCache[heroMode] : null;
+  if(cached){ renderHeroesRows(box, cached); return; }
+
+  box.innerHTML = `<div class="acct-muted" style="text-align:center">Loading...</div>`;
+  let rows = [];
+  try{
+    const { data, error } = await sb.rpc("app_hero_stats", { p_mode: heroMode });
+    if(error) throw error;
+    rows = (data || []).filter(h => h.hero && h.hero.toLowerCase() !== "unknown");
+    heroCache = heroCache || { ts: Date.now() }; heroCache[heroMode] = rows; heroCache.ts = Date.now();
+  }catch(e){ box.innerHTML = `<p class="acct-muted" style="text-align:center">Couldn't load hero stats.</p>`; return; }
+  renderHeroesRows(box, rows);
 }
 
 document.querySelectorAll("#hero-mode button").forEach(b => b.addEventListener("click", () => renderHeroes(b.dataset.mode)));
@@ -527,7 +555,7 @@ async function renderSpectate(){
   const box = $("spectate-panel"); if(!box) return;
   let matches = [], queue = [];
   const [mRes, qRes] = await Promise.allSettled([
-    sb.from("live_matches").select("lobby_id, code, started_at, updated_at, avg_rating, player_count, has_standings, standings").order("avg_rating", { ascending:false }),
+    sb.from("live_matches").select("lobby_id, code, started_at, updated_at, avg_rating, player_count, has_standings, standings").order("avg_rating", { ascending:false }).limit(20),
     sb.from("queue_snapshot").select("player_id, username, platform, rating, enqueued_at").order("rating", { ascending:false })
   ]);
   if(mRes.status==="fulfilled" && !mRes.value.error){ matches = mRes.value.data || []; }
@@ -561,5 +589,16 @@ async function renderSpectate(){
   box.querySelectorAll(".q-name[data-name]").forEach(el => el.addEventListener("click", e => { e.preventDefault(); showProfile(el.dataset.name); }));
 }
 
-renderFeatured(); setInterval(renderFeatured, 60000);
-renderTotals();   setInterval(renderTotals, 60000);
+show(location.hash.slice(1) && $(location.hash.slice(1)) ? location.hash.slice(1) : "home");
+
+document.addEventListener("visibilitychange", () => {
+  if(document.hidden){
+    stopTimer("lb"); stopTimer("feat"); stopTimer("tot");
+    if(spectateTimer){ clearInterval(spectateTimer); spectateTimer = null; }
+  } else {
+    const t = (location.hash.slice(1) && $(location.hash.slice(1))) ? location.hash.slice(1) : "home";
+    if(t==="leaderboard") startTimer("lb", tickBoard, LB_INTERVAL);
+    if(t==="home"){ startTimer("feat", renderFeatured, FEAT_INTERVAL); startTimer("tot", renderTotals, TOT_INTERVAL); }
+    if(t==="spectate") renderSpectate();
+  }
+});
