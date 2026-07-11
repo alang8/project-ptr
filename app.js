@@ -55,7 +55,6 @@ if(navToggle){
 }
 document.querySelectorAll(".tabs .tab-btn").forEach(b => b.addEventListener("click", closeMenu));
 document.addEventListener("click", e => { if(topbar && topbar.classList.contains("menu-open") && !topbar.contains(e.target)) closeMenu(); });
-if(location.hash.slice(1) && $(location.hash.slice(1))) show(location.hash.slice(1));
 
 /* =========================================================================
    LEADERBOARD  (read-only `leaderboard` view)
@@ -563,3 +562,5 @@ async function renderSpectate(){
 
 renderFeatured(); setInterval(renderFeatured, 60000);
 renderTotals();   setInterval(renderTotals, 60000);
+
+if(location.hash.slice(1) && $(location.hash.slice(1))) show(location.hash.slice(1));
