@@ -68,7 +68,7 @@ async function fetchLeaderboard(page){
   const from = page*PAGE_SIZE, to = from+PAGE_SIZE-1;
   let q = sb
     .from("leaderboard")
-    .select("id,discord_id,username,rating,games,wins,losses,position", { count:"exact" })
+    .select("id,username,rating,games,wins,losses,position", { count:"exact" })
     .order("position", { ascending:true });
   if(searchTerm) q = q.ilike("username", "%" + searchTerm.replace(/[%_]/g, "\\$&") + "%");
   const { data, error, count } = await q.range(from, to);
@@ -299,7 +299,7 @@ async function loadProfileByPlayer(player){
 
 async function loadProfileData(name){
   const { data: player } = await sb.from("players")
-    .select("id, discord_id, username, rating, games, wins, losses").eq("username", name).maybeSingle();
+    .select("id, username, rating, games, wins, losses").eq("username", name).maybeSingle();
   if(!player) return null;
   return loadProfileByPlayer(player);
 }
