@@ -498,15 +498,26 @@ function wireProfileLinks(box){
 
 async function renderFeatured(){
   const box = $("featured"); if(!box) return;
+  // Read the SAME source as the Spectate page (live_matches) so the two views can
+  // never fall out of sync. The featured match is just the highest-rated live one.
   let f = null;
-  try{ const { data } = await sb.from("featured_match").select("*").single(); f = data; }
-  catch(e){ if(featStamp!==null){ box.innerHTML=""; featStamp=null; } return; }
-  if(!f || f.status !== "live"){
+  try{
+    const { data, error } = await sb.from("live_matches")
+      .select("lobby_id, code, started_at, updated_at, avg_rating, player_count, has_standings, standings")
+      .order("avg_rating", { ascending:false }).limit(1);
+    if(error) throw error;
+    f = (data && data[0]) || null;
+  }catch(e){
+    // Fallback to the single-row view if live_matches isn't available.
+    try{ const { data } = await sb.from("featured_match").select("*").single(); f = (data && data.status === "live") ? data : null; }catch(_){ f = null; }
+  }
+  if(!f){
     if(featStamp!=="none"){ box.innerHTML = `<div class="feat-idle"><span class="live-dot idle"></span> No live ranked match right now</div>`; featStamp="none"; }
     return;
   }
-  if(f.updated_at === featStamp) return;
-  featStamp = f.updated_at;
+  const stamp = f.updated_at || f.lobby_id || "live";
+  if(stamp === featStamp) return;
+  featStamp = stamp;
   box.innerHTML = matchCardHTML(f, "Featured Live Match");
   wireProfileLinks(box);
 }
