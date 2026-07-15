@@ -195,31 +195,6 @@ footer img{height:28px;opacity:.8;margin-bottom:14px}
 footer p{font-size:11.5px;color:var(--ink-faint);line-height:1.7;max-width:540px;margin:0 auto}
 footer .gold{color:var(--gold-deep)}
 
-/* ---------- responsive ---------- */
-@media(max-width:700px){
-  .topbar{gap:8px}
-  .brand .nm{font-size:14px}
-  .nav-toggle{display:flex}
-  .tabs{position:absolute;top:100%;left:0;right:0;flex-direction:column;gap:2px;margin:0;padding:8px;
-    background:linear-gradient(180deg,rgba(13,10,14,.99),rgba(7,6,8,.99));
-    border:1px solid var(--line);border-top:none;border-radius:0 0 12px 12px;
-    box-shadow:0 22px 44px -22px rgba(0,0,0,.9);display:none;
-    max-height:calc(100vh - 58px);overflow-y:auto}
-  .topbar.menu-open .tabs{display:flex}
-  .tab-btn{width:100%;text-align:left;padding:12px 14px;font-size:14px;border-radius:8px}
-  .tab-btn.active{background:rgba(232,181,74,.08)}
-  .tab-btn.active::after{display:none}
-  .discord{display:none}
-  .auth-slot{margin-left:auto}
-  .board-head,.row{grid-template-columns:38px 1fr 66px 66px;gap:6px;padding-left:12px;padding-right:12px}
-  .handle{font-size:14px}
-  .mmr{font-size:16px}
-  .scoregrid{grid-template-columns:repeat(2,1fr)}
-  .p-tiles{grid-template-columns:repeat(2,1fr)}
-  .m-row{grid-template-columns:44px 40px 1fr 46px 58px;gap:5px;font-size:12px}
-  .ht-row{grid-template-columns:1fr 32px 60px 44px;gap:5px;padding:9px 12px;font-size:12px}
-  .ht-row span:nth-child(5),.ht-row span:nth-child(6){display:none}
-}
 
 /* ===================== AUTH / ACCOUNT ===================== */
 .auth-slot{display:flex;align-items:center;flex-shrink:0}
@@ -445,3 +420,29 @@ a.q-name:hover{color:var(--gold-bright)}
 .plat-legend .pdot{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:5px;vertical-align:middle}
 .pdot.dc{background:#5865F2}.pdot.qq{background:#3fae74}
 @media(max-width:560px){.q-row{grid-template-columns:1fr 64px 44px 74px;gap:6px;padding:9px 12px;font-size:12.5px}}
+
+/* responsive: placed after all base rules so mobile overrides win */
+@media(max-width:700px){
+  .topbar{gap:8px}
+  .brand .nm{font-size:14px}
+  .nav-toggle{display:flex}
+  .tabs{position:absolute;top:100%;left:0;right:0;flex-direction:column;gap:2px;margin:0;padding:8px;
+    background:linear-gradient(180deg,rgba(13,10,14,.99),rgba(7,6,8,.99));
+    border:1px solid var(--line);border-top:none;border-radius:0 0 12px 12px;
+    box-shadow:0 22px 44px -22px rgba(0,0,0,.9);display:none;
+    max-height:calc(100vh - 58px);overflow-y:auto}
+  .topbar.menu-open .tabs{display:flex}
+  .tab-btn{width:100%;text-align:left;padding:12px 14px;font-size:14px;border-radius:8px}
+  .tab-btn.active{background:rgba(232,181,74,.08)}
+  .tab-btn.active::after{display:none}
+  .discord{display:none}
+  .auth-slot{margin-left:auto}
+  .board-head,.row{grid-template-columns:38px 1fr 66px 66px;gap:6px;padding-left:12px;padding-right:12px}
+  .handle{font-size:14px}
+  .mmr{font-size:16px}
+  .scoregrid{grid-template-columns:repeat(2,1fr)}
+  .p-tiles{grid-template-columns:repeat(2,1fr)}
+  .m-row{grid-template-columns:44px 40px 1fr 46px 58px;gap:5px;font-size:12px}
+  .ht-row{grid-template-columns:1fr 32px 60px 44px;gap:5px;padding:9px 12px;font-size:12px}
+  .ht-row span:nth-child(5),.ht-row span:nth-child(6){display:none}
+}
